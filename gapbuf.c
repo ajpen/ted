@@ -26,11 +26,13 @@ int reallocBuffer(gapbuffer* buffer, int new_size, int new_gapsize){
     }
 
     char* newbuf = malloc(sizeof(char) * new_size);
+    char* oldbuf = buffer->buffer;
 
     if (newbuf == NULL){
         return MEMERROR;
     }
 
+    // TODO: Lines 52 to 69 are pretty much duplicated in GapBufferMoveGap. Consider refactoring it to a callable func
     /*
      * Assume the following gapbuf:
      * size = 17
@@ -47,7 +49,7 @@ int reallocBuffer(gapbuffer* buffer, int new_size, int new_gapsize){
      * */
 
     // first, copy up to the start of the gapbuffer
-    memcpy(newbuf, buffer->buffer, sizeof(char) * (buffer->gap_loc));
+    memcpy(newbuf, oldbuf, sizeof(char) * (buffer->gap_loc));
 
     // initialize the gap (set its contents to \0)
     memset(
@@ -55,12 +57,17 @@ int reallocBuffer(gapbuffer* buffer, int new_size, int new_gapsize){
         '\0',
         new_gapsize);
 
-    // finally, copy the rest of the gapbuffer
+    // copy the rest of the gapbuffer
     memcpy(
         (newbuf + buffer->gap_loc + new_gapsize),
-        (buffer->buffer + buffer->gap_loc + buffer->gap_size),
+        (oldbuf + buffer->gap_loc + buffer->gap_size),
         buffer->buffersize - (buffer->gap_loc + buffer->gap_size));
 
+    // free the old buffer
+    free(oldbuf);
+
+    // finally, set the new buffer to the gapbuffer structure
+    buffer->buffer = newbuf;
     return 1;
 }
 
@@ -157,6 +164,30 @@ void GapBufferMoveGap(gapbuffer* buffer, int newloc){
         newloc = 0;
     }
 
-    // TODO: Create a new buffer to copy the contents. Copying in place can overwrite parts of the buffer
-    //  that wasn't copied as yet
+    buffer->gap_loc = newloc;
+
+    // Copy the contents from the old buffer to the new one, respecting the new buf location
+    char* newbuf = malloc(sizeof(char) * buffer->buffersize);
+    char* oldbuf = buffer->buffer;
+
+    // first, copy up to the start of the gapbuffer
+    memcpy(newbuf, oldbuf, sizeof(char) * (buffer->gap_loc));
+
+    // initialize the gap (set its contents to \0)
+    memset(
+        newbuf + buffer->gap_loc,
+        '\0',
+        buffer->gap_size);
+
+    // copy the rest of the gapbuffer
+    memcpy(
+            (newbuf + buffer->gap_loc + buffer->gap_size),
+            (oldbuf + buffer->gap_loc + buffer->gap_size),
+            buffer->buffersize - (buffer->gap_loc + buffer->gap_size));
+
+    // free the old buffer
+    free(oldbuf);
+
+    // finally, set the new buffer to the gapbuffer structure
+    buffer->buffer = newbuf;
 }
