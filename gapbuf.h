@@ -102,27 +102,28 @@ int GapBufferInsert(gapbuffer* buffer, char* str, int len);
 
 
 /*
- * GapBufferErase Erases n characters from the given location backwards (Analogous to hitting backspace n times)
- * Erased characters are automatically added to the buffer.
+ * GapBufferErase Erases n characters backwards from the start of the gap (Analogous to hitting backspace n times)
+ * Erased characters are automatically added to the gap.
  *
  * If the start of the buffer is reached before n characters are erased, the rest is ignored.
- * If loc is not valid, or n is 0, 0 is returned.
  *
  * buffer: gapbuffer in question
- * loc: Index to start erasing characters form
  * n: Number of characters to erase
  *
  * returns:
- * the number of characters erased OR
- * 0 if loc is invalid or n is 0.
+ * the number of characters erased
  *
  * */
-int GapBufferErase(gapbuffer* buffer, int loc, int n);
+int GapBufferErase(gapbuffer* buffer, int n);
 
 
 /*
- * TODO: Should have a method to either insert at x loc or move the gap buffer (like move cursor)
+ * GapBufferMoveGap Moves the gap to the new location specified. The new location should be
+ * between 0 to buffersize-gapsize. If its larger than buffersize-gapsize, it'll default to that.
+ * If the new location is less than 0, it defaults to 0
  * */
+void GapBufferMoveGap(gapbuffer* gapbuffer, int newloc);
+
 
 #endif //TEDITOR_GAPBUF_H
 

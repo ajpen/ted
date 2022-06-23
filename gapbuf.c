@@ -132,7 +132,31 @@ int GapBufferInsert(gapbuffer* buffer, char* str, int len){
 }
 
 
-int GapBufferErase(gapbuffer* buffer, int loc, int n){
-    /*TODO: First, move gap to the new loc, then erase and count # of chars removed
-    */
+int GapBufferErase(gapbuffer* buffer, int n){
+
+    // we can remove at most `buffer->gap_loc` characters
+    if (buffer->gap_loc < n){
+        n = buffer->gap_loc;
+    }
+
+    memset((buffer->buffer + (buffer->gap_loc - n)),  // Goes to the gap location - n (since memset moves -> direction)
+           '\0',
+           n);
+
+    return n;
+}
+
+
+void GapBufferMoveGap(gapbuffer* buffer, int newloc){
+
+    if (newloc > (buffer->buffersize - buffer->gap_size)){
+        newloc = buffer->buffersize - buffer->gap_size;
+    }
+
+    if (newloc < 0){
+        newloc = 0;
+    }
+
+    // TODO: Create a new buffer to copy the contents. Copying in place can overwrite parts of the buffer
+    //  that wasn't copied as yet
 }
