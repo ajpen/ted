@@ -17,10 +17,11 @@
  * [] -> [contents of line |       |  three]
  * [] -> [contents of line |       |  four]
  * [] -> [contents of line |       |  five]
- * [] -> []
- * [] -> []
+ * [] -> [|                                |]    Blank line (with a full buffer)
+ * [] -> NULL                                    No line.
  *
  * Note that blank lines will have a buffer. This can be optimized later (with a performance penalty for inserts)
+ * Array slots with a NULL pointer are non existent lines, and signal the end of a file.
  *
  * Having the rows be an array allows constant lookup so file exploration is cheap.
  * Copying small strings is cheap so gap buffers for lines shouldn't be too expensive.
@@ -72,5 +73,25 @@ int TextBufferInsert(TextBuffer* instance, char ch);
  * Backspace deletes the character that appears before the cursor location. Similar to hitting the backspace button.
  * */
 void TextBufferBackspace(TextBuffer* instance);
+
+
+/*
+ * NewLine adds a new line to the buffer and moves the cursor to the start of that new line.
+ * Handles the logic of hitting the return key.
+ * Only works when at the end of the last line of the fine. Used to allow users to add more lines
+ *
+ * TODO: Add support for hitting return in the middle of a line, and also between other lines
+ * e.g.
+ * [] -> [contents of line |       |  one]
+ * [] -> [contents {}of line |       |  twp]
+ * [] -> [contents of line |       |  three]
+ * In the TextBuffer above, {} is the cursor. What happens if Enter is hit at that location?
+ * 1. The line needs to be split into two lines
+ * 2. The new line needs to be placed immediately after the line that was split.
+ * 3. The lines below need to be shifted down once
+ *
+ * Returns 0 or MEM_ERROR
+ * */
+int TextBufferNewLine(TextBuffer* instance);
 
 #endif //TED_BUFFER_H
