@@ -49,86 +49,86 @@ void TestGapBuffer(){
 
 
     printf("Test 1, empty string\n");
-    string_holder = GetString(buffer);
+    string_holder = GapBufferGetString(buffer);
     string_comp_assert(string_holder, sample1);
 
 
     printf("Test 2 insert char\n");
-    err = InsertChar(buffer, 'a');
+    err = GapBufferInsertChar(buffer, 'a');
     assert(err == 0);
-    string_holder = GetString(buffer);
+    string_holder = GapBufferGetString(buffer);
     string_comp_assert(string_holder, sample2);
 
 
     printf("Test 2.1 insert char\n");
     for (int i=0; i<10; i++){
-        err = InsertChar(buffer, 'a');
+        err = GapBufferInsertChar(buffer, 'a');
         assert(err == 0);
     }
-    string_holder = GetString(buffer);
+    string_holder = GapBufferGetString(buffer);
     string_comp_assert(string_holder, sample3);
 
 
     printf("Test 2.2 insert char (resize) \n");
     for (int i=0; i<10; i++){
-        err = InsertChar(buffer, 'a');
+        err = GapBufferInsertChar(buffer, 'a');
         assert(err == 0);
     }
-    string_holder = GetString(buffer);
+    string_holder = GapBufferGetString(buffer);
     string_comp_assert(string_holder, sample4);
 
 
     printf("Test 3 Backspace \n");
-    BackSpace(buffer);
-    string_holder = GetString(buffer);
+    GapBufferBackSpace(buffer);
+    string_holder = GapBufferGetString(buffer);
     string_comp_assert(string_holder, sample5);
 
 
-    printf("Test 4 MoveGap, Insert and Backspace \n");
+    printf("Test 4 GapBufferMoveGap, TextBufferInsert and Backspace \n");
 
-    err = MoveGap(buffer, 3);
+    err = GapBufferMoveGap(buffer, 3);
     assert(err == 0);
 
     for (int i=0; i<3; i++) {
-        err = InsertChar(buffer, 'b');
+        err = GapBufferInsertChar(buffer, 'b');
         assert(err == 0);
     }
-    string_holder = GetString(buffer);
+    string_holder = GapBufferGetString(buffer);
     string_comp_assert(string_holder, sample6);
 
 
-    printf("Test 4.1 MoveGap, Insert and Backspace \n");
+    printf("Test 4.1 GapBufferMoveGap, TextBufferInsert and Backspace \n");
 
-    err = MoveGap(buffer, 0);
+    err = GapBufferMoveGap(buffer, 0);
     assert(err == 0);
 
     for (int i=0; i<3; i++) {
-        err = InsertChar(buffer, 'c');
+        err = GapBufferInsertChar(buffer, 'c');
         assert(err == 0);
     }
-    string_holder = GetString(buffer);
+    string_holder = GapBufferGetString(buffer);
     string_comp_assert(string_holder, sample7);
 
 
-    printf("Test 4.2 MoveGap, Insert and Backspace \n");
+    printf("Test 4.2 GapBufferMoveGap, TextBufferInsert and Backspace \n");
 
-    err = MoveGap(buffer, buffer->str_len);
+    err = GapBufferMoveGap(buffer, buffer->str_len);
     assert(err == 0);
 
     for (int i=0; i<3; i++) {
-        err = InsertChar(buffer, 'd');
+        err = GapBufferInsertChar(buffer, 'd');
         assert(err == 0);
     }
-    string_holder = GetString(buffer);
+    string_holder = GapBufferGetString(buffer);
     string_comp_assert(string_holder, sample8);
 
 
     printf("Test 5 Backspace\n");
     for (int i=0; i<29; i++){
-        BackSpace(buffer);
+        GapBufferBackSpace(buffer);
     }
 
-    string_holder = GetString(buffer);
+    string_holder = GapBufferGetString(buffer);
     string_comp_assert(string_holder, sample1);
 
 

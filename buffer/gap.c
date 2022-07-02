@@ -80,7 +80,7 @@ void DestroyGapBuffer(GapBuffer * instance){
 }
 
 
-int InsertChar(GapBuffer* instance, char ch){
+int GapBufferInsertChar(GapBuffer* instance, char ch){
 
     int errno;
 
@@ -101,7 +101,7 @@ int InsertChar(GapBuffer* instance, char ch){
 }
 
 
-void BackSpace(GapBuffer* instance){
+void GapBufferBackSpace(GapBuffer* instance){
 
     if (instance->gap_loc > 0){
         instance->gap_loc--;
@@ -111,7 +111,7 @@ void BackSpace(GapBuffer* instance){
 }
 
 
-int MoveGap(GapBuffer* instance, int location){
+int GapBufferMoveGap(GapBuffer* instance, int location){
     if (location > instance->str_len){
         location = instance->str_len;
     }
@@ -165,7 +165,7 @@ int MoveGap(GapBuffer* instance, int location){
     return 0;
 }
 
-char* GetString(GapBuffer* instance){
+char* GapBufferGetString(GapBuffer* instance){
     char* buffer = malloc(1 + (sizeof(char) * instance->str_len));
 
     if (buffer == NULL){

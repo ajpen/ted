@@ -60,26 +60,26 @@ void DestroyGapBuffer(GapBuffer * instance);
  * Inserts a character into the gap buffer. Resizes the buffer and the gap if necessary.
  * Returns 0 if successful or MEM_ERROR
  * */
-int InsertChar(GapBuffer* instance, char ch);
+int GapBufferInsertChar(GapBuffer* instance, char ch);
 
 
 /*
  * Backspace deletes a character from the prefix of the gap, extending the gap length.
  * */
-void BackSpace(GapBuffer* instance);
+void GapBufferBackSpace(GapBuffer* instance);
 
 
 /*
  * Moves the gap to a new location in the string. If the location is greater than str_len,
  * it moves to the end of the string. if less than 0, moves to the start of the string
  * */
-int MoveGap(GapBuffer* instance, int location);
+int GapBufferMoveGap(GapBuffer* instance, int location);
 
 
 /*
  * GetString returns a pointer to an allocated copy of the current string in the gapbuffer.
  * */
-char* GetString(GapBuffer* instance);
+char* GapBufferGetString(GapBuffer* instance);
 
 
 
