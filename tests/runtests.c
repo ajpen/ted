@@ -84,9 +84,9 @@ void TestGapBuffer(){
     string_comp_assert(string_holder, sample5);
 
 
-    printf("Test 4 MoveCursor, Insert and Backspace \n");
+    printf("Test 4 MoveGap, Insert and Backspace \n");
 
-    err = MoveCursor(buffer, 3);
+    err = MoveGap(buffer, 3);
     assert(err == 0);
 
     for (int i=0; i<3; i++) {
@@ -97,9 +97,9 @@ void TestGapBuffer(){
     string_comp_assert(string_holder, sample6);
 
 
-    printf("Test 4.1 MoveCursor, Insert and Backspace \n");
+    printf("Test 4.1 MoveGap, Insert and Backspace \n");
 
-    err = MoveCursor(buffer, 0);
+    err = MoveGap(buffer, 0);
     assert(err == 0);
 
     for (int i=0; i<3; i++) {
@@ -110,9 +110,9 @@ void TestGapBuffer(){
     string_comp_assert(string_holder, sample7);
 
 
-    printf("Test 4.2 MoveCursor, Insert and Backspace \n");
+    printf("Test 4.2 MoveGap, Insert and Backspace \n");
 
-    err = MoveCursor(buffer, buffer->str_len);
+    err = MoveGap(buffer, buffer->str_len);
     assert(err == 0);
 
     for (int i=0; i<3; i++) {

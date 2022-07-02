@@ -111,7 +111,7 @@ void BackSpace(GapBuffer* instance){
 }
 
 
-int MoveCursor(GapBuffer* instance, int location){
+int MoveGap(GapBuffer* instance, int location){
     if (location > instance->str_len){
         location = instance->str_len;
     }

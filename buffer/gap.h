@@ -73,7 +73,7 @@ void BackSpace(GapBuffer* instance);
  * Moves the gap to a new location in the string. If the location is greater than str_len,
  * it moves to the end of the string. if less than 0, moves to the start of the string
  * */
-int MoveCursor(GapBuffer* instance, int location);
+int MoveGap(GapBuffer* instance, int location);
 
 
 /*
