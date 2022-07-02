@@ -45,6 +45,7 @@ int resizeBuffer(GapBuffer* instance, int new_capacity){
 
     free(instance->buffer);
     instance->buffer = new_buffer;
+    instance->gap_len = gap_size;
 
     return 0;
 }
@@ -111,7 +112,7 @@ void BackSpace(GapBuffer* instance){
 
 
 int MoveCursor(GapBuffer* instance, int location){
-    if (location > instance->str_len-1){
+    if (location > instance->str_len){
         location = instance->str_len;
     }
 
@@ -158,6 +159,28 @@ int MoveCursor(GapBuffer* instance, int location){
                sizeof(char) * instance->str_len - location);
     }
 
+    free(instance->buffer);
+    instance->buffer = new_buffer;
+    instance->gap_loc = location;
     return 0;
+}
 
+char* GetString(GapBuffer* instance){
+    char* buffer = malloc(1 + (sizeof(char) * instance->str_len));
+
+    if (buffer == NULL){
+        return NULL;
+    }
+
+    // Copy before gap
+    memcpy(buffer, instance->buffer, instance->gap_loc);
+
+    // Copy after gap
+    memcpy(buffer + instance->gap_loc,
+           instance->buffer + instance->gap_loc + instance->gap_len,
+           instance->str_len - instance->gap_loc);
+
+    buffer[instance->str_len] = '\0';
+
+    return buffer;
 }

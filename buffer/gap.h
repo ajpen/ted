@@ -9,8 +9,6 @@
 #ifndef TED_GAP_H
 #define TED_GAP_H
 
-#include "base.h"
-
 #define MEM_ERROR -1
 
 /*
