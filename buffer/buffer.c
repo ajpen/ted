@@ -97,7 +97,15 @@ int TextBufferInsert(TextBuffer* instance, char ch){
 
         instance->cursorColMoved = 0;
     }
-    return GapBufferInsertChar(instance->lines[instance->cursorRow], ch);
+
+    errno = GapBufferInsertChar(instance->lines[instance->cursorRow], ch);
+
+    if (errno != 0){
+        return errno;
+    }
+
+    instance->cursorCol++;
+    return 0;
 }
 
 
