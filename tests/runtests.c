@@ -7,14 +7,18 @@
 #include "stdio.h"
 #include <string.h>
 #include "../buffer/gap.h"
+#include "../buffer/buffer.h"
 
 
 // Test Suites
 void TestGapBuffer();
+void TestTextBuffer();
 
 
 int main(){
     TestGapBuffer();
+    TestTextBuffer();
+    printf("All tests passed!\n");
 }
 
 
@@ -26,8 +30,11 @@ void string_comp_assert(char* str1, const char* str2){
 }
 
 void TestGapBuffer(){
+    printf("\n\nTesting GapBuffer\n");
 
     GapBuffer* buffer = CreateGapBuffer(20);
+    assert(buffer != NULL);
+
     char* string_holder = NULL;
     char* string_holder2 = NULL;
     int err;
@@ -166,6 +173,69 @@ void TestGapBuffer(){
     DestroyGapBuffer(buffer);
     DestroyGapBuffer(buffer2);
 
-    printf("All Tests Passed.");
+    printf("GapBuffer Tests Passed.");
 }
 
+
+
+
+
+void TestTextBuffer(){
+
+    printf("\n\nTesting TextBuffer\n");
+
+    TextBuffer* texBuffer = CreateTextBuffer(10, 20);
+    assert(texBuffer != NULL);
+
+    int errno;
+    char* string_holder = NULL;
+
+    const char sample1[] = "";
+    const char sample2[] = "a";
+    const char sample3[] = "aaaaaaaaaaa";  // 11 characters
+    const char sample4[] = "aaaaaaaaaa";  // 10 characters
+    const char sample5[] = "aaaaaaaaa";  // 9 characters
+
+
+    printf("Test 1, empty string\n");
+
+    string_holder = TextBufferGetLine(texBuffer, texBuffer->cursorRow);
+    string_comp_assert(string_holder, sample1);
+
+    printf("Test 2 insert char\n");
+    errno = TextBufferInsert(texBuffer, 'a');
+    assert(errno == 0);
+
+    string_holder = TextBufferGetLine(texBuffer, texBuffer->cursorRow);
+    string_comp_assert(string_holder, sample2);
+
+    printf("Test 2.1 insert char\n");
+    for (int i=0; i<10; i++){
+        errno = TextBufferInsert(texBuffer, 'a');
+        assert(errno == 0);
+    }
+    string_holder = TextBufferGetLine(texBuffer, texBuffer->cursorRow);
+    string_comp_assert(string_holder, sample3);
+
+    printf("Test 3 Backspace \n");
+    TextBufferBackspace(texBuffer);
+    string_holder = TextBufferGetLine(texBuffer, texBuffer->cursorRow);
+    string_comp_assert(string_holder, sample4);
+
+    printf("Test 4 MoveCursor, Newline\n");
+    TextBufferMoveCursor(texBuffer, texBuffer->cursorRow, texBuffer->cursorCol-1);
+
+    errno = TextBufferNewLine(texBuffer);
+    assert(errno == 0);
+
+    string_holder = TextBufferGetLine(texBuffer, texBuffer->cursorRow);
+    string_comp_assert(string_holder, sample2);
+
+    string_holder = TextBufferGetLine(texBuffer, texBuffer->cursorRow-1);
+    string_comp_assert(string_holder, sample5);
+
+    printf("Cleanup...\n");
+    DestroyTextBuffer(texBuffer);
+
+    printf("TextBuffer Tests Passed.\n");
+}

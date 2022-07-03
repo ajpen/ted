@@ -95,9 +95,9 @@ void TextBufferBackspace(TextBuffer* instance);
 /*
  * NewLine adds a new line to the buffer and moves the cursor to the start of that new line.
  * Handles the logic of hitting the return key.
- * Only works when at the end of the last line of the fine. Used to allow users to add more lines
+ * Only works when at the end of the last line of the fine. Used to allow users to add more lines to the end of
+ * the buffer
  *
- * TODO: Add support for hitting return in the middle of a line, and also between other lines
  * e.g.
  * [] -> [contents of line |       |  one]
  * [] -> [contents {}of line |       |  twp]
@@ -120,7 +120,7 @@ int TextBufferNewLine(TextBuffer* instance);
 
 /*
  * Returns an allocated string of the contents of the line at the given index.
- * if index is out of bounds, returns NULL
+ * if index is out of bounds, or there was a memory error, returns NULL
  *
  * */
 char* TextBufferGetLine(TextBuffer* instance, int row);

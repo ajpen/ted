@@ -111,6 +111,7 @@ int TextBufferInsert(TextBuffer* instance, char ch){
 
 void TextBufferBackspace(TextBuffer* instance){
     GapBufferBackSpace(instance->lines[instance->cursorRow]);
+    instance->cursorCol--;
 }
 
 
@@ -130,6 +131,8 @@ int TextBufferNewLine(TextBuffer* instance){
         if (errno != 0){
             return errno;
         }
+
+        instance->cursorColMoved = 0;
     }
 
     // Split the current GapBuffer at the gap location
@@ -166,6 +169,7 @@ int TextBufferNewLine(TextBuffer* instance){
 
     // Update the cursor position
     instance->cursorRow++;
+    instance->cursorCol = newline->gap_loc;
 
     return 0;
 }
