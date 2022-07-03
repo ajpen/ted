@@ -18,8 +18,10 @@
  * [] -> [contents of line |       |  three]
  * [] -> [contents of line |       |  four]
  * [] -> [contents of line |       |  five]
- * [] -> [|                                |]    Blank line (with a full buffer)
- * [] -> NULL                                    No line.
+ * [] -> [|                              |]    Blank line (with a full buffer)
+ * [] -> NULL                                    No line. Signals end of the buffer
+ * ...
+ * [] -> NULL                                    Last element of the array. Signals end of capacity.
  *
  * Note that blank lines will have a buffer. This can be optimized later (with a performance penalty for inserts)
  * Array slots with a NULL pointer are non-existent lines, and signal the end of a file.
@@ -31,13 +33,16 @@
  * such as the cursor position (row, col).
  *
  * lines: array of GapBuffers representing the lines in a file.
- * lines_cap: size of the lines array
- * cursor: represents where the current cursor is.
+ * lines_capacity: size of the lines array
+ * cursorRow: row of the cursor
+ * cursorCol: column of the cursor
+ * cursorColMoved: whether the cursorCol changed (by a move operation for example)
+ * last_line_loc: the last line in the buffer
  * */
 
 typedef struct TextBuffer {
     GapBuffer** lines;
-    int num_lines;
+    int lines_capacity;
     int cursorRow;
     int cursorCol;
     int cursorColMoved;    // if cursorColMoved, a move must be performed on the gap buffer before inserts
@@ -103,6 +108,12 @@ void TextBufferBackspace(TextBuffer* instance);
  * 1. The line needs to be split into two lines
  * 2. The new line needs to be placed immediately after the line that was split.
  * 3. The lines below need to be shifted down once
+ *
+ * The results of this:
+ * [] -> [contents of line |       |  one]
+ * [] -> [contents|                  |]
+ * [] -> [{}|                  |of line twp]
+ * [] -> [contents of line |       |  three]
  *
  * Returns 0 or MEM_ERROR
  * */

@@ -9,6 +9,7 @@
 
 
 /*
+ * TODO: Consider rewriting this using realloc and memmove.
  * helper function for copying the contents of a GapBuffer.buffer to a new buffer, with/without
  * resizing the gap. This method is useful when moving the 'cursor' or when resizing a filled buffer.
  * instance: GapBuffer instance
@@ -188,7 +189,7 @@ char* GapBufferGetString(GapBuffer* instance){
 
 
 #pragma clang diagnostic push
-#pragma ide diagnostic ignored "DanglingPointer"
+#pragma ide diagnostic ignored "DanglingPointer"  // Ignore because CreateGapBuffer never returns a deallocated pointer.
 GapBuffer* GapBufferSplit(GapBuffer *instance) {
     // split the current GapBuffer where the gap is.
     // Create a new GapBuffer and copy the second half of the string to the new GapBuffer
