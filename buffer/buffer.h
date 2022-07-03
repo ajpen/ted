@@ -7,6 +7,7 @@
 
 #include "gap.h"
 
+
 /*
  * TextBuffer
  * This data structure represents the current buffer of the text editor.
@@ -21,29 +22,42 @@
  * [] -> NULL                                    No line.
  *
  * Note that blank lines will have a buffer. This can be optimized later (with a performance penalty for inserts)
- * Array slots with a NULL pointer are non existent lines, and signal the end of a file.
+ * Array slots with a NULL pointer are non-existent lines, and signal the end of a file.
  *
  * Having the rows be an array allows constant lookup so file exploration is cheap.
  * Copying small strings is cheap so gap buffers for lines shouldn't be too expensive.
  *
  * Additionally, this structure will hold details about the current state of the text editor,
  * such as the cursor position (row, col).
+ *
+ * lines: array of GapBuffers representing the lines in a file.
+ * lines_cap: size of the lines array
+ * cursor: represents where the current cursor is.
  * */
 
 typedef struct TextBuffer {
     GapBuffer** lines;
-    int cursor[2];
+    int num_lines;
+    int cursorRow;
+    int cursorCol;
+    int cursorColMoved;    // if cursorColMoved, a move must be performed on the gap buffer before inserts
+    int last_line_loc;  // Index of the last line (also the number of lines)
 } TextBuffer;
 
 
 /*
  * CreateTextBuffer creates and initializes a new text buffer.
- * lines: The number of lines to use
+ * lines: The number of lines to support initially
  * line_size: Default initial line size to allocate.
  * Returns a pointer to an initialized TextBuffer or NULL
  * */
-TextBuffer* CreateTextBuffer(TextBuffer* instance, int lines, int line_size);
+TextBuffer* CreateTextBuffer(int lines, int line_size);
 
+
+/*
+ * DestroyTextBuffer deallocates the structures in the TextBuffer, and the TextBuffer itself
+ * */
+void DestroyTextBuffer(TextBuffer* instance);
 
 /*
  * MoveCursor moves the cursor to row and column given. If the values are out of bounds, it's moved
@@ -54,7 +68,7 @@ TextBuffer* CreateTextBuffer(TextBuffer* instance, int lines, int line_size);
  * Returns 0 on success or MEM_ERROR
  * */
 
-int TextBufferMoveCursor(TextBuffer* instance, int row, int col);
+void TextBufferMoveCursor(TextBuffer* instance, int row, int col);
 
 
 /*
