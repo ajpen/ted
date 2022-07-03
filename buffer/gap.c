@@ -195,6 +195,8 @@ GapBuffer* GapBufferSplit(GapBuffer *instance) {
     // Create a new GapBuffer and copy the second half of the string to the new GapBuffer
 
     int capacity = instance->gap_len + instance->str_len;
+    int second_half_of_str_len = instance->str_len - instance->gap_loc;
+
     GapBuffer* new_gap_buffer = CreateGapBuffer(capacity);
 
     if (new_gap_buffer == NULL){
@@ -202,14 +204,16 @@ GapBuffer* GapBufferSplit(GapBuffer *instance) {
     }
 
     // copy the second half of the string to the new GapBuffer
-    memcpy(new_gap_buffer->buffer,
+    // The string is copied to the location at the end of the gap in the new GapBuffer
+    // |           gap             |second half of string
+    memcpy(new_gap_buffer->buffer + (capacity - second_half_of_str_len),
            instance->buffer + instance->gap_loc + instance->gap_len,
-           instance->str_len - instance->gap_loc);
+           second_half_of_str_len);
 
     // set str_len, gap_loc and gap_len of the new GapBuffer
-    new_gap_buffer->str_len = instance->str_len - instance->gap_loc;
-    new_gap_buffer->gap_loc = new_gap_buffer->str_len;
-    new_gap_buffer->gap_len = capacity - new_gap_buffer->str_len;
+    new_gap_buffer->str_len = second_half_of_str_len;
+    new_gap_buffer->gap_loc = 0;
+    new_gap_buffer->gap_len = capacity - second_half_of_str_len;
 
 
     // set str_len, gap_len of the old GapBuffer
