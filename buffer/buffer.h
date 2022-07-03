@@ -80,8 +80,6 @@ void TextBufferMoveCursor(TextBuffer* instance, int row, int col);
  * Insert inserts a character at the cursor location. Space is made for the inserted character; it doesn't overwrite
  * a character that might be at the cursor's current position.
  *
- * Memory is allocated as needed.
- *
  * Returns 0 on success, or MEM_ERROR
  * */
 
@@ -118,5 +116,14 @@ void TextBufferBackspace(TextBuffer* instance);
  * Returns 0 or MEM_ERROR
  * */
 int TextBufferNewLine(TextBuffer* instance);
+
+
+/*
+ * Returns an allocated string of the contents of the line at the given index.
+ * if index is out of bounds, returns NULL
+ *
+ * */
+char* TextBufferGetLine(TextBuffer* instance, int row);
+
 
 #endif //TED_BUFFER_H

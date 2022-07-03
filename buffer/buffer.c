@@ -161,3 +161,14 @@ int TextBufferNewLine(TextBuffer* instance){
 
     return 0;
 }
+
+char *TextBufferGetLine(TextBuffer *instance, int row) {
+    if (row > instance->last_line_loc){
+        return NULL;
+    }
+    if (row < 0){
+        return NULL;
+    }
+
+    return GapBufferGetString(instance->lines[row]);
+}
