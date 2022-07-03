@@ -73,7 +73,7 @@ void TextBufferMoveCursor(TextBuffer* instance, int row, int col){
 
     instance->cursorRow = row;
 
-    // We dont need to worry about checking out of bounds for col. GapBuffer's MoveGap handles that
+    // We don't need to worry about checking out of bounds for col. GapBuffer's MoveGap handles that
     // We do however, need to indicate that the column moved so the gap can be moved before inserting
     if (instance->cursorCol != col){
         instance->cursorColMoved = 1;
