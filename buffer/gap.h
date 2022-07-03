@@ -82,7 +82,14 @@ int GapBufferMoveGap(GapBuffer* instance, int location);
 char* GapBufferGetString(GapBuffer* instance);
 
 
-
+/*
+ * Splits the buffer at the cursor location, returning a new buffer of the same capcacity as the original
+ * with the second half of the string. The original buffer will contain the first half of the string,
+ * with the gap extending to fill the capacity.
+ *
+ * return a pointer to the new buffer, or NULL on failure.
+ * */
+GapBuffer* SplitGapBuffer(GapBuffer *instance);
 
 
 

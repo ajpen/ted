@@ -184,3 +184,39 @@ char* GapBufferGetString(GapBuffer* instance){
 
     return buffer;
 }
+
+
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "DanglingPointer"
+GapBuffer* SplitGapBuffer(GapBuffer *instance) {
+    // split the current GapBuffer where the gap is.
+    // Create a new GapBuffer and copy the second half of the string to the new GapBuffer
+
+    int capacity = instance->gap_len + instance->str_len;
+    GapBuffer* new_gap_buffer = CreateGapBuffer(capacity);
+
+    if (new_gap_buffer == NULL){
+        return NULL;
+    }
+
+    // copy the second half of the string to the new GapBuffer
+    memcpy(new_gap_buffer->buffer,
+           instance->buffer + instance->gap_loc + instance->gap_len,
+           instance->str_len - instance->gap_loc);
+
+    // set str_len, gap_loc and gap_len of the new GapBuffer
+    new_gap_buffer->str_len = instance->str_len - instance->gap_loc;
+    new_gap_buffer->gap_loc = new_gap_buffer->str_len;
+    new_gap_buffer->gap_len = capacity - new_gap_buffer->str_len;
+
+
+    // set str_len, gap_len of the old GapBuffer
+    instance->str_len = instance->gap_loc;
+    instance->gap_len = capacity - instance->str_len;
+
+    return new_gap_buffer;
+
+}
+#pragma clang diagnostic pop
+#pragma clang diagnostic pop
