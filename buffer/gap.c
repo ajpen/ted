@@ -133,7 +133,7 @@ int GapBufferMoveGap(GapBuffer* instance, int location){
         // copy up to location
         memcpy(new_buffer, instance->buffer, sizeof(char) * (location));
 
-        // then copy what remains up to instance.gaploc, to the position after the gap in the new buffer
+        // then copy what remains up to instance.gap_loc, to the position after the gap in the new buffer
         memcpy(new_buffer + location + instance->gap_len,
                instance->buffer + location,
                sizeof(char) * (instance->gap_loc-location));
@@ -148,7 +148,7 @@ int GapBufferMoveGap(GapBuffer* instance, int location){
         // copy upto original gap
         memcpy(new_buffer, instance->buffer, sizeof(char) * (instance->gap_loc));
 
-        // copy whats left before the new location
+        // copy what's left before the new location
         memcpy(new_buffer+instance->gap_loc,
                instance->buffer + instance->gap_loc + instance->gap_len,
                sizeof(char) * (location - instance->gap_loc));
@@ -189,7 +189,7 @@ char* GapBufferGetString(GapBuffer* instance){
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "DanglingPointer"
-GapBuffer* SplitGapBuffer(GapBuffer *instance) {
+GapBuffer* GapBufferSplit(GapBuffer *instance) {
     // split the current GapBuffer where the gap is.
     // Create a new GapBuffer and copy the second half of the string to the new GapBuffer
 
@@ -218,5 +218,4 @@ GapBuffer* SplitGapBuffer(GapBuffer *instance) {
     return new_gap_buffer;
 
 }
-#pragma clang diagnostic pop
 #pragma clang diagnostic pop

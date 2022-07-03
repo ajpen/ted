@@ -89,7 +89,7 @@ char* GapBufferGetString(GapBuffer* instance);
  *
  * return a pointer to the new buffer, or NULL on failure.
  * */
-GapBuffer* SplitGapBuffer(GapBuffer *instance);
+GapBuffer* GapBufferSplit(GapBuffer *instance);
 
 
 

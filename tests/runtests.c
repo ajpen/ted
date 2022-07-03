@@ -17,13 +17,6 @@ int main(){
     TestGapBuffer();
 }
 
-void print_string(char* string, int len){
-    for (int i=0; i<len; i++){
-        printf("%c", string[i]);
-    }
-
-    printf("\n");
-}
 
 void string_comp_assert(char* str1, const char* str2){
     assert(str1 != NULL);
@@ -36,6 +29,7 @@ void TestGapBuffer(){
 
     GapBuffer* buffer = CreateGapBuffer(20);
     char* string_holder = NULL;
+    char* string_holder2 = NULL;
     int err;
 
     const char sample1[] = "";
@@ -46,6 +40,8 @@ void TestGapBuffer(){
     const char sample6[] = "aaabbbaaaaaaaaaaaaaaaaa";
     const char sample7[] = "cccaaabbbaaaaaaaaaaaaaaaaa";
     const char sample8[] = "cccaaabbbaaaaaaaaaaaaaaaaaddd";
+    const char sample9[] = "cccaaa";
+    const char sample10[] ="bbbaaaaaaaaaaaaaaaaaddd";
 
 
     printf("Test 1, empty string\n");
@@ -123,8 +119,26 @@ void TestGapBuffer(){
     string_comp_assert(string_holder, sample8);
 
 
-    printf("Test 5 Backspace\n");
-    for (int i=0; i<29; i++){
+    printf("Test 5 Split\n");
+    err = GapBufferMoveGap(buffer, 6);
+    assert(err == 0);
+
+    GapBuffer* buffer2 = GapBufferSplit(buffer);
+    assert(buffer2 != NULL);
+
+    string_holder = GapBufferGetString(buffer);
+    string_holder2 = GapBufferGetString(buffer2);
+
+    printf("Buffer 1: %s\n", string_holder);
+    printf("Buffer 2: %s\n", string_holder2);
+
+
+    string_comp_assert(string_holder, sample9);
+    string_comp_assert(string_holder2, sample10);
+
+
+    printf("Test 6 Backspace\n");
+    for (int i=0; i<6; i++){
         GapBufferBackSpace(buffer);
     }
 
@@ -134,6 +148,7 @@ void TestGapBuffer(){
 
     printf("Cleanup...\n");
     DestroyGapBuffer(buffer);
+    DestroyGapBuffer(buffer2);
 
     printf("All Tests Passed.");
 }
