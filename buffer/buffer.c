@@ -125,6 +125,7 @@ int TextBufferNewLine(TextBuffer* instance){
     }
 
     // Split the current GapBuffer at the gap location
+    // New gap will have the gap at the start of its string.
     GapBuffer* newline = GapBufferSplit(instance->lines[instance->cursorRow]);
 
     if (newline == NULL){
