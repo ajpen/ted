@@ -1,21 +1,142 @@
 #include <ctype.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <termios.h>
+#include <sys/ioctl.h>
+#include <sys/errno.h>
 #include "../buffer/buffer.h"
 
-struct termios orig_termios;
+/*** definitions ***/
+#define MAX_LINE_SIZE 200
+#define MAX_NUM_LINES 1000
+
+// CTRL_KEY macro returns the value of the k as a control key combination; basically CTRL + k
+#define CTRL_KEY(k) ((k) & 0x1f)
+
+/* prototypes */
+void panic(const char* message);
+
+
+
+/* structs */
+
+// Main state & buffers
+struct EditorState {
+
+    // configuration states
+    struct termios orig_termios;
+    int screen_rows;
+    int screen_cols;
+
+
+    // buffer states
+    TextBuffer* current_buffer;
+};
+
+/* global editor state */
+struct EditorState editor_state;
+
+/* Functions */
+/******************************* Display *****************************************/
+void clear_screen() {
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
+}
+
+
+/* Cursor Movement */
+void move_cursor(int row, int col) {
+    char buf[32];
+    sprintf(buf, "\x1b[%d;%dH", row, col);
+    write(STDOUT_FILENO, buf, strlen(buf));
+}
+
+void up_arrow() {
+    write(STDOUT_FILENO, "\x1b[A", 3);
+}
+
+void down_arrow() {
+    write(STDOUT_FILENO, "\x1b[B", 3);
+}
+
+void right_arrow() {
+    write(STDOUT_FILENO, "\x1b[C", 3);
+}
+
+void left_arrow(){
+    write(STDOUT_FILENO, "\x1b[D", 3);
+}
+
+
+void set_window_size() {
+    struct winsize ws;
+    int rows, cols;
+
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+        // panic("Failed to get window size");
+
+        // manually get window size
+        if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12 != 12)) {
+            panic("Failed to get window size");
+        }
+
+        // read the response
+        char buf[32];
+        for (int i = 0; i < sizeof(buf); i++) {
+            if (read(STDIN_FILENO, &buf[i], 1) != 1) {
+                panic("Failed to get window size");
+            }
+
+            if (buf[i] == 'R') {
+                buf[i + 1] = '\0';
+                break;
+            }
+        }
+
+        // parse the response and set the windows size
+        if (sscanf(buf, "%d;%d", &editor_state.screen_rows, &editor_state.screen_cols) != 2) {
+            panic("Failed to get windows size");
+        }
+
+    } else {
+        editor_state.screen_rows = ws.ws_row;
+        editor_state.screen_cols = ws.ws_col;
+    }
+}
+
+/******************************* Input *****************************************/
+char read_char(){
+    char c;
+
+    if (read(STDIN_FILENO, &c, 1) == EAGAIN) {
+        panic("read_char: read() returned EAGAIN");
+    }
+    return c;
+}
+
+
+void process_keypress(){
+    char c = read_char();
+    switch (c) {
+        case CTRL_KEY('q'):
+            clear_screen();
+            exit(0);
+            break;
+    }
+}
 
 
 void panic(const char* message){
+    clear_screen();
     perror(message);
     exit(1);
 }
 
 
 void disableRawMode() {
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1) {
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &editor_state.orig_termios) == -1) {
         panic("tcsetattr");
     }
 }
@@ -23,13 +144,13 @@ void disableRawMode() {
 // Test raw mode
 void enableRawMode(){
 
-    if(tcgetattr(STDIN_FILENO, &orig_termios) == -1) {
+    if(tcgetattr(STDIN_FILENO, &editor_state.orig_termios) == -1) {
         panic("tcgetattr");
     }
 
     atexit(disableRawMode);
 
-    struct termios raw = orig_termios;
+    struct termios raw = editor_state.orig_termios;
 
     /*
      * Local modes:
@@ -89,15 +210,8 @@ void enableRawMode(){
 int main() {
     enableRawMode();
 
+
     while (1) {
-        char c = '\0';
-        read(STDIN_FILENO, &c, 1);
-        if (iscntrl(c)) {
-            printf("%d\r\n", c);
-        } else {
-            printf("%d ('%c')\r\n", c, c);
-        }
-        if (c == 'q') break;
+        process_keypress();
     }
-    return 0;
 }
