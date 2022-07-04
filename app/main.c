@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <libgen.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,16 +10,47 @@
 #include "../buffer/buffer.h"
 
 /*** definitions ***/
-#define MAX_LINE_SIZE 200
-#define MAX_NUM_LINES 1000
+#define DEFAULT_LINE_SIZE 200
+#define DEFAULT_NUM_LINES 1000
 
 // CTRL_KEY macro returns the value of the k as a control key combination; basically CTRL + k
 #define CTRL_KEY(k) ((k) & 0x1f)
 
+// ANSI Escape Codes
+#define INVERT_COLOUR "\x1b[7m"
+#define INVERT_COLOUR_SIZE 4
+#define RESET_INVERT_COLOUR "x1b[27m"
+#define RESET_INVERT_COLOUR_SIZE 5
+
 /* prototypes */
+
+/* System and Configuration */
 void panic(const char* message);
+void initialize(int argc, char* argv[]);
+void cleanup();
+void set_window_size();
+void disableRawMode();
+void enableRawMode();
 
+/* Screen Manipulation */
+void render_screen();
+void draw_screen();
+void draw_status_line(int line_size, int cur_screen_pos);
 
+/* Cursor Movement */
+void move_cursor(int row, int col);
+void up_arrow();
+void down_arrow();
+void right_arrow();
+void left_arrow();
+
+/* Input */
+char read_char();
+void process_keypress();
+
+/* File Manipulation*/
+int flush_buffer_to_file();
+int load_file();
 
 /* structs */
 
@@ -27,22 +59,54 @@ struct EditorState {
 
     // configuration states
     struct termios orig_termios;
-    int screen_rows;
-    int screen_cols;
 
+    // File states
+    char* file_name;
+    char* file_path;         // path to file.
+    FILE* fp;                // Opened file buffer. NULL if editor opened with a new file
+    int flushed;             // was the most recent changes flushed to disk
 
     // buffer states
     TextBuffer* current_buffer;
+
+    // Window states
+    char* screen;           // Internal representation of the screen
+    int screen_rows;
+    int screen_cols;
+    int screen_cursor_row;
+    int screen_cursor_col;
 };
 
 /* global editor state */
 struct EditorState editor_state;
 
-/* Functions */
-/******************************* Display *****************************************/
-void clear_screen() {
+
+/* Main */
+int main(int argc, char* argv[]) {
+    initialize(argc, argv);
+
+    while (1) {
+        //write(STDOUT_FILENO, "\x1b[7m  1\x1b[27mHello", 17);
+        process_keypress();
+        render_screen();
+    }
+}
+
+
+
+/******************************* Implementations *********************************/
+
+/*Display */
+void render_screen() {
+
+    // Clean screen
     write(STDOUT_FILENO, "\x1b[2J", 4);
+
+    // Move cursor back up to (0, 0)
     write(STDOUT_FILENO, "\x1b[H", 3);
+
+    // flush internal screen to display
+    write(STDOUT_FILENO, editor_state.screen, editor_state.screen_rows * editor_state.screen_cols);
 }
 
 
@@ -65,7 +129,7 @@ void right_arrow() {
     write(STDOUT_FILENO, "\x1b[C", 3);
 }
 
-void left_arrow(){
+void left_arrow() {
     write(STDOUT_FILENO, "\x1b[D", 3);
 }
 
@@ -106,7 +170,7 @@ void set_window_size() {
     }
 }
 
-/******************************* Input *****************************************/
+/* Input */
 char read_char(){
     char c;
 
@@ -121,15 +185,57 @@ void process_keypress(){
     char c = read_char();
     switch (c) {
         case CTRL_KEY('q'):
-            clear_screen();
+
+            // Clear screen
+            write(STDOUT_FILENO, "\x1b[2J", 4);
+            write(STDOUT_FILENO, "\x1b[H", 3);
+
+            cleanup();
             exit(0);
             break;
     }
+
+    draw_screen();
 }
 
+void initialize(int argc, char* argv[]){
+    // Get file path information
+    if (argc >= 2){
+        editor_state.file_path = argv[1];
+    }
+    else {
+        editor_state.file_path = "Empty Buffer";
+    }
+    editor_state.file_name = basename(editor_state.file_path);
+    load_file();
+
+
+    // initialize text buffer
+    editor_state.current_buffer = CreateTextBuffer(DEFAULT_NUM_LINES, DEFAULT_LINE_SIZE);
+
+    // initialize screen
+    enableRawMode();
+    set_window_size();
+
+    // double the buffer for the screen to allow escape codes to be sent without overflowing
+    editor_state.screen = malloc(editor_state.screen_rows * editor_state.screen_cols * sizeof(char) * 2);
+}
+
+void cleanup(){
+    // free memory for screen
+    free(editor_state.screen);
+
+    // Free the text buffer
+    DestroyTextBuffer(editor_state.current_buffer);
+
+    // clean up file pointers
+    if (editor_state.fp != NULL){
+        fclose(editor_state.fp);
+    }
+}
 
 void panic(const char* message){
-    clear_screen();
+    render_screen();
     perror(message);
     exit(1);
 }
@@ -205,13 +311,101 @@ void enableRawMode(){
     }
 }
 
+void draw_status_line(int line_size, int cur_screen_pos) {
+
+    const char commands[] = "Ctrl+Q-quit Ctrl+S-Save";
+    unsigned int commands_len = sizeof commands;
+
+    const char modified[] = "changed";
+    int modified_len = sizeof modified;
+
+    // Calculate space for each part of the status line
+    int file_cursor_space = line_size - (commands_len + modified_len + 2);
+    int cur_col_digits = snprintf(NULL, 0, "%d", editor_state.current_buffer->cursorCol);
+    int cur_row_digits = snprintf(NULL, 0, "%d", editor_state.current_buffer->cursorRow);
+
+    int f_name_space = file_cursor_space - (cur_col_digits + cur_row_digits + 5);
+    int file_name_size = strlen(editor_state.file_name);
+
+    int cursor_info_buffer_size = file_cursor_space - f_name_space;
+    char cursor_info_buffer[cursor_info_buffer_size];
 
 
-int main() {
-    enableRawMode();
+    // invert the colours
+    memcpy(editor_state.screen + cur_screen_pos, INVERT_COLOUR, INVERT_COLOUR_SIZE);
+    cur_screen_pos += INVERT_COLOUR_SIZE;
+
+    // Write file name. If its longer than available space, we'll cut it short with ellipsis
+    if (file_name_size > f_name_space){
+        memcpy(editor_state.screen + cur_screen_pos, editor_state.file_name, f_name_space - 4);
+        cur_screen_pos += f_name_space - 4;
+
+        memcpy(editor_state.screen + cur_screen_pos, "... ", 4);
+        cur_screen_pos += 4;
+
+    } else {
+        memcpy(editor_state.screen + cur_screen_pos, editor_state.file_name, file_name_size);
+        cur_screen_pos += file_name_size;
+
+        // Fill with whitespace
+        memset(editor_state.screen + cur_screen_pos, ' ', f_name_space - file_name_size);
+        cur_screen_pos += f_name_space - file_name_size;
+    }
+
+    // Write col and row info
+    sprintf(cursor_info_buffer,
+            " | %d,%d ",
+            editor_state.current_buffer->cursorRow, editor_state.current_buffer->cursorCol);
+
+    memcpy(editor_state.screen + cur_screen_pos, cursor_info_buffer, strlen(cursor_info_buffer));
+    cur_screen_pos += strlen(cursor_info_buffer);
+
+    // fill with whitespace
+    memset(editor_state.screen + cur_screen_pos,
+           ' ', cursor_info_buffer_size - strlen(cursor_info_buffer));
+
+    cur_screen_pos += cursor_info_buffer_size - strlen(cursor_info_buffer);
+
+    // Indicate if buffer was modified since last write.
+    if (!editor_state.flushed) {
+        memcpy(editor_state.screen + cur_screen_pos, modified, modified_len);
+        cur_screen_pos += modified_len;
+    }
+    else {
+        memset(editor_state.screen + cur_screen_pos, ' ', modified_len);
+        cur_screen_pos += modified_len;
+    }
+
+    // Fill with whitespace
+
+    // Finally, print help
+    memcpy(editor_state.screen + cur_screen_pos, commands, commands_len);
+    cur_screen_pos += commands_len;
+
+    // disable inversion and move cursor to position on screen
+}
 
 
-    while (1) {
-        process_keypress();
+void draw_screen(){
+    int screen_str_pos = 0;
+
+    // TESTING STATUS BAR
+    for (int i=0; i<editor_state.screen_rows; i++){
+
+        if (i == editor_state.screen_rows-1){
+            draw_status_line(editor_state.screen_cols-2, screen_str_pos);
+        }
+
+        if (i < editor_state.screen_rows -1){
+            memcpy(editor_state.screen + screen_str_pos, "\r\n", 2);
+            screen_str_pos += 2;
+        }
     }
 }
+
+
+int load_file(){
+    editor_state.fp = NULL;
+    return -1;
+}
+
