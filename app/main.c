@@ -97,20 +97,6 @@ int main(int argc, char* argv[]) {
 
 /******************************* Implementations *********************************/
 
-/*Display */
-void render_screen() {
-
-    // Clean screen
-    write(STDOUT_FILENO, "\x1b[2J", 4);
-
-    // Move cursor back up to (0, 0)
-    write(STDOUT_FILENO, "\x1b[H", 3);
-
-    // flush internal screen to display
-    write(STDOUT_FILENO, editor_state.screen, editor_state.screen_rows * editor_state.screen_cols);
-}
-
-
 /* Cursor Movement */
 void move_cursor(int row, int col) {
     char buf[32];
@@ -312,6 +298,53 @@ void enableRawMode(){
     }
 }
 
+
+/* Display */
+void render_screen() {
+
+    // flush internal screen to display
+    write(STDOUT_FILENO, editor_state.screen, editor_state.screen_rows * editor_state.screen_cols);
+}
+
+
+void draw_screen(){
+    int screen_str_pos = 0;
+
+    // Disable cursor
+    memcpy(editor_state.screen,  "\x1b[?25l", 6);
+    screen_str_pos += 6;
+
+    // Clear screen
+    memcpy(editor_state.screen, "\x1b[2J", 4);
+    screen_str_pos += 4;
+
+    // Move cursor to the top
+    memcpy(editor_state.screen, "\x1b[H", 3);
+    screen_str_pos += 3;
+
+    // TESTING STATUS BAR
+    for (; screen_str_pos<editor_state.screen_rows; screen_str_pos++){
+
+        if (screen_str_pos == editor_state.screen_rows-1){
+            draw_status_line(editor_state.screen_cols, screen_str_pos);
+        }
+
+        if (screen_str_pos < editor_state.screen_rows -1){
+            memcpy(editor_state.screen + screen_str_pos, "\r\n", 2);
+            screen_str_pos += 2;
+        }
+    }
+
+    // Move cursor to the top
+    memcpy(editor_state.screen, "\x1b[H", 3);
+    screen_str_pos += 3;
+
+    // Enable cursor
+    memcpy(editor_state.screen,  "\x1b[?25l", 6);
+    screen_str_pos += 6;
+}
+
+
 void draw_status_line(int line_size, int cur_screen_pos) {
 
     const char commands[] = "Ctrl+Q-quit Ctrl+S-Save";
@@ -326,7 +359,7 @@ void draw_status_line(int line_size, int cur_screen_pos) {
      * */
 
     // Calculate space for each part of the status line
-    int file_cursor_space = line_size - (commands_len + modified_len + 2);
+    int file_cursor_space = line_size - (commands_len + modified_len);
     int cur_col_digits = snprintf(NULL, 0, "%d", editor_state.current_buffer->cursorCol);
     int cur_row_digits = snprintf(NULL, 0, "%d", editor_state.current_buffer->cursorRow);
 
@@ -362,10 +395,6 @@ void draw_status_line(int line_size, int cur_screen_pos) {
     memcpy(editor_state.screen + cur_screen_pos, cursor_info_buffer, strlen(cursor_info_buffer));
     cur_screen_pos += strlen(cursor_info_buffer);
 
-    // Fill with whitespace
-    memset(editor_state.screen + cur_screen_pos, ' ', f_name_space - file_name_size);
-    cur_screen_pos += f_name_space - file_name_size;
-
     // Indicate if buffer was modified since last write.
     if (!editor_state.flushed) {
         memcpy(editor_state.screen + cur_screen_pos, modified, modified_len);
@@ -377,30 +406,14 @@ void draw_status_line(int line_size, int cur_screen_pos) {
     }
 
     // Fill with whitespace
+    memset(editor_state.screen + cur_screen_pos, ' ', f_name_space - file_name_size);
+    cur_screen_pos += f_name_space - file_name_size;
 
     // Finally, print help
     memcpy(editor_state.screen + cur_screen_pos, commands, commands_len);
     cur_screen_pos += commands_len;
 
     // disable inversion and move cursor to position on screen
-}
-
-
-void draw_screen(){
-    int screen_str_pos = 0;
-
-    // TESTING STATUS BAR
-    for (int i=0; i<editor_state.screen_rows; i++){
-
-        if (i == editor_state.screen_rows-1){
-            draw_status_line(editor_state.screen_cols-2, screen_str_pos);
-        }
-
-        if (i < editor_state.screen_rows -1){
-            memcpy(editor_state.screen + screen_str_pos, "\r\n", 2);
-            screen_str_pos += 2;
-        }
-    }
 }
 
 
