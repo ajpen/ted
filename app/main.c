@@ -13,6 +13,7 @@
 #define DEFAULT_LINE_SIZE 200
 #define DEFAULT_NUM_LINES 1000
 
+
 // CTRL_KEY macro returns the value of the k as a control key combination; basically CTRL + k
 #define CTRL_KEY(k) ((k) & 0x1f)
 
@@ -314,10 +315,15 @@ void enableRawMode(){
 void draw_status_line(int line_size, int cur_screen_pos) {
 
     const char commands[] = "Ctrl+Q-quit Ctrl+S-Save";
-    unsigned int commands_len = sizeof commands;
+    unsigned int commands_len = sizeof commands-1;
 
     const char modified[] = "changed";
-    int modified_len = sizeof modified;
+    int modified_len = sizeof modified-1;
+
+    /*
+     * {|file cursor space| |modified len|    |       controls       |
+     * [filename.c | 5,50   changed           Ctrl+Q-quit Ctrl+S-Save]
+     * */
 
     // Calculate space for each part of the status line
     int file_cursor_space = line_size - (commands_len + modified_len + 2);
@@ -346,10 +352,6 @@ void draw_status_line(int line_size, int cur_screen_pos) {
     } else {
         memcpy(editor_state.screen + cur_screen_pos, editor_state.file_name, file_name_size);
         cur_screen_pos += file_name_size;
-
-        // Fill with whitespace
-        memset(editor_state.screen + cur_screen_pos, ' ', f_name_space - file_name_size);
-        cur_screen_pos += f_name_space - file_name_size;
     }
 
     // Write col and row info
@@ -360,11 +362,9 @@ void draw_status_line(int line_size, int cur_screen_pos) {
     memcpy(editor_state.screen + cur_screen_pos, cursor_info_buffer, strlen(cursor_info_buffer));
     cur_screen_pos += strlen(cursor_info_buffer);
 
-    // fill with whitespace
-    memset(editor_state.screen + cur_screen_pos,
-           ' ', cursor_info_buffer_size - strlen(cursor_info_buffer));
-
-    cur_screen_pos += cursor_info_buffer_size - strlen(cursor_info_buffer);
+    // Fill with whitespace
+    memset(editor_state.screen + cur_screen_pos, ' ', f_name_space - file_name_size);
+    cur_screen_pos += f_name_space - file_name_size;
 
     // Indicate if buffer was modified since last write.
     if (!editor_state.flushed) {
