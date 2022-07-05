@@ -23,37 +23,13 @@
 #define RESET_INVERT_COLOUR "x1b[27m"
 #define RESET_INVERT_COLOUR_SIZE 5
 
-/* prototypes */
-
-/* System and Configuration */
-void panic(const char* message);
-void initialize(int argc, char* argv[]);
-void cleanup();
-void set_window_size();
-void disableRawMode();
-void enableRawMode();
-
-/* Screen Manipulation */
-void render_screen();
-void draw_screen();
-void draw_status_line(int line_size, int cur_screen_pos);
-
-/* Cursor Movement */
-void move_cursor(int row, int col);
-void up_arrow();
-void down_arrow();
-void right_arrow();
-void left_arrow();
-
-/* Input */
-char read_char();
-void process_keypress();
-
-/* File Manipulation*/
-int flush_buffer_to_file();
-int load_file();
-
 /* structs */
+
+struct VirtualScreen {
+    char* buffer;           // Internal representation of the screen
+    int buf_pos;
+    int len;
+};
 
 // Main state & buffers
 struct EditorState {
@@ -71,7 +47,7 @@ struct EditorState {
     TextBuffer* current_buffer;
 
     // Window states
-    char* screen;           // Internal representation of the screen
+    struct VirtualScreen screen;
     int screen_rows;
     int screen_cols;
     int screen_cursor_row;
@@ -82,14 +58,47 @@ struct EditorState {
 struct EditorState editor_state;
 
 
+/* prototypes */
+
+/* System and Configuration */
+void panic(const char* message);
+void initialize(int argc, char* argv[]);
+void cleanup();
+void set_window_size();
+void disableRawMode();
+void enableRawMode();
+
+/* Screen Manipulation */
+void render_screen();
+void draw_screen();
+void draw_status_line(int line_size, int cur_screen_pos);
+
+void screen_append(const char *str, int size);
+
+/* Cursor Movement */
+void move_cursor(int row, int col);
+void up_arrow();
+void down_arrow();
+void right_arrow();
+void left_arrow();
+
+/* Input */
+char read_char();
+void process_keypress();
+
+/* File Manipulation*/
+int flush_buffer_to_file();
+int load_file();
+
+
 /* Main */
 int main(int argc, char* argv[]) {
     initialize(argc, argv);
 
     while (1) {
-        //write(STDOUT_FILENO, "\x1b[7m  1\x1b[27mHello", 17);
-        process_keypress();
+        draw_screen();
         render_screen();
+        process_keypress();
     }
 }
 
@@ -160,9 +169,12 @@ void set_window_size() {
 /* Input */
 char read_char(){
     char c;
+    ssize_t err;
 
-    if (read(STDIN_FILENO, &c, 1) == EAGAIN) {
-        panic("read_char: read() returned EAGAIN");
+    while((err = read(STDIN_FILENO, &c, 1)) != -1) {
+        if (err == EAGAIN) {
+            panic("read_char: read() returned EAGAIN");
+        }
     }
     return c;
 }
@@ -176,13 +188,13 @@ void process_keypress(){
             // Clear screen
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
+            // Enable cursor
+            screen_append("\x1b[?25h", 6);
 
             cleanup();
             exit(0);
             break;
     }
-
-    draw_screen();
 }
 
 void initialize(int argc, char* argv[]){
@@ -205,12 +217,14 @@ void initialize(int argc, char* argv[]){
     set_window_size();
 
     // double the buffer for the screen to allow escape codes to be sent without overflowing
-    editor_state.screen = malloc(editor_state.screen_rows * editor_state.screen_cols * sizeof(char) * 2);
+    editor_state.screen.len = editor_state.screen_rows * editor_state.screen_cols * sizeof(char) * 2;
+    editor_state.screen.buffer = malloc(editor_state.screen.len);
+    editor_state.screen.buf_pos = 0;
 }
 
 void cleanup(){
     // free memory for screen
-    free(editor_state.screen);
+    free(editor_state.screen.buffer);
 
     // Free the text buffer
     DestroyTextBuffer(editor_state.current_buffer);
@@ -303,24 +317,22 @@ void enableRawMode(){
 void render_screen() {
 
     // flush internal screen to display
-    write(STDOUT_FILENO, editor_state.screen, editor_state.screen_rows * editor_state.screen_cols);
+    write(STDOUT_FILENO, editor_state.screen.buffer, editor_state.screen.len);
 }
 
 
 void draw_screen(){
-    int screen_str_pos = 0;
+    editor_state.screen.buf_pos = 0; // reset the screen
+    int screen_str_pos = 0;  // position on the screen
 
     // Disable cursor
-    memcpy(editor_state.screen,  "\x1b[?25l", 6);
-    screen_str_pos += 6;
+    screen_append("\x1b[?25l", 6);
 
     // Clear screen
-    memcpy(editor_state.screen, "\x1b[2J", 4);
-    screen_str_pos += 4;
+    screen_append("\x1b[2J", 4);
 
     // Move cursor to the top
-    memcpy(editor_state.screen, "\x1b[H", 3);
-    screen_str_pos += 3;
+    screen_append("\x1b[H", 3);
 
     // TESTING STATUS BAR
     for (; screen_str_pos<editor_state.screen_rows; screen_str_pos++){
@@ -329,19 +341,16 @@ void draw_screen(){
             draw_status_line(editor_state.screen_cols, screen_str_pos);
         }
 
-        if (screen_str_pos < editor_state.screen_rows -1){
-            memcpy(editor_state.screen + screen_str_pos, "\r\n", 2);
-            screen_str_pos += 2;
+        if (screen_str_pos < editor_state.screen_rows-1){
+            screen_append("\r\n", 2);
         }
     }
 
     // Move cursor to the top
-    memcpy(editor_state.screen, "\x1b[H", 3);
-    screen_str_pos += 3;
+    screen_append("\x1b[H", 3);
 
     // Enable cursor
-    memcpy(editor_state.screen,  "\x1b[?25l", 6);
-    screen_str_pos += 6;
+    screen_append("\x1b[?25h", 6);
 }
 
 
@@ -371,20 +380,16 @@ void draw_status_line(int line_size, int cur_screen_pos) {
 
 
     // invert the colours
-    memcpy(editor_state.screen + cur_screen_pos, INVERT_COLOUR, INVERT_COLOUR_SIZE);
-    cur_screen_pos += INVERT_COLOUR_SIZE;
+    screen_append(INVERT_COLOUR, INVERT_COLOUR_SIZE);
 
     // Write file name. If its longer than available space, we'll cut it short with ellipsis
     if (file_name_size > f_name_space){
-        memcpy(editor_state.screen + cur_screen_pos, editor_state.file_name, f_name_space - 4);
-        cur_screen_pos += f_name_space - 4;
+        screen_append(editor_state.file_name, f_name_space - 4);
 
-        memcpy(editor_state.screen + cur_screen_pos, "... ", 4);
-        cur_screen_pos += 4;
+        screen_append("... ", 4);
 
     } else {
-        memcpy(editor_state.screen + cur_screen_pos, editor_state.file_name, file_name_size);
-        cur_screen_pos += file_name_size;
+        screen_append(editor_state.file_name, file_name_size);
     }
 
     // Write col and row info
@@ -392,26 +397,23 @@ void draw_status_line(int line_size, int cur_screen_pos) {
             " | %d,%d ",
             editor_state.current_buffer->cursorRow, editor_state.current_buffer->cursorCol);
 
-    memcpy(editor_state.screen + cur_screen_pos, cursor_info_buffer, strlen(cursor_info_buffer));
-    cur_screen_pos += strlen(cursor_info_buffer);
+    screen_append(cursor_info_buffer, strlen(cursor_info_buffer));
 
     // Indicate if buffer was modified since last write.
     if (!editor_state.flushed) {
-        memcpy(editor_state.screen + cur_screen_pos, modified, modified_len);
-        cur_screen_pos += modified_len;
+        screen_append(modified, modified_len);
     }
     else {
-        memset(editor_state.screen + cur_screen_pos, ' ', modified_len);
-        cur_screen_pos += modified_len;
+        memset(editor_state.screen.buffer + editor_state.screen.buf_pos, ' ', modified_len);
+        editor_state.screen.buf_pos += modified_len;
     }
 
     // Fill with whitespace
-    memset(editor_state.screen + cur_screen_pos, ' ', f_name_space - file_name_size);
-    cur_screen_pos += f_name_space - file_name_size;
+    memset(editor_state.screen.buffer + editor_state.screen.buf_pos, ' ', f_name_space - file_name_size);
+    editor_state.screen.buf_pos += f_name_space - file_name_size;
 
     // Finally, print help
-    memcpy(editor_state.screen + cur_screen_pos, commands, commands_len);
-    cur_screen_pos += commands_len;
+    screen_append(commands, commands_len);
 
     // disable inversion and move cursor to position on screen
 }
@@ -421,4 +423,14 @@ int load_file(){
     editor_state.fp = NULL;
     return -1;
 }
+
+
+void screen_append(const char *str, int size) {
+
+    if (editor_state.screen.buffer != NULL && (editor_state.screen.len - editor_state.screen.buf_pos) > size) {
+        memcpy(editor_state.screen.buffer + editor_state.screen.buf_pos, str, size);
+        editor_state.screen.buf_pos += size;
+    }
+}
+
 

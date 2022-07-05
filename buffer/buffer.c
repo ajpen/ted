@@ -85,23 +85,23 @@ void TextBufferMoveCursor(TextBuffer* instance, int row, int col){
 
 int TextBufferInsert(TextBuffer* instance, char ch){
 
-    int errno;
+    int err;
 
     // If the cursor column changed, we need to move the gap buffer before inserting
     if (instance->cursorColMoved) {
-        errno = GapBufferMoveGap(instance->lines[instance->cursorRow], instance->cursorCol);
+        err = GapBufferMoveGap(instance->lines[instance->cursorRow], instance->cursorCol);
 
-        if (errno != 0){
-            return errno;
+        if (err != 0){
+            return err;
         }
 
         instance->cursorColMoved = 0;
     }
 
-    errno = GapBufferInsertChar(instance->lines[instance->cursorRow], ch);
+    err = GapBufferInsertChar(instance->lines[instance->cursorRow], ch);
 
-    if (errno != 0){
-        return errno;
+    if (err != 0){
+        return err;
     }
 
     instance->cursorCol++;
