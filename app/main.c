@@ -96,7 +96,7 @@ void process_keypress();
 
 /* File Manipulation*/
 int flush_buffer_to_file();
-int load_file();
+int load_file_and_initialize_buffer();
 
 
 /* Main */
@@ -221,11 +221,9 @@ void initialize(int argc, char* argv[]){
         editor_state.file_path = "Empty Buffer";
     }
     editor_state.file_name = basename(editor_state.file_path);
-    load_file();
 
-
-    // initialize text buffer
-    editor_state.current_buffer = CreateTextBuffer(DEFAULT_NUM_LINES, DEFAULT_LINE_SIZE);
+    // Loads the file and initialize the textbuffer
+    load_file_and_initialize_buffer();
 
     // initialize screen
     enableRawMode();
@@ -481,28 +479,30 @@ void draw_status_line(int line_size) {
 
 
 /*
- * Returns -1 if the file doesn't exist and MEM_ERROR if it wasn't successfully loaded
+ * Returns:
+ * -1: If there was an issue with opening the file; the buffer is still initialized as a blank buffer
+ * MEM_ERROR if it wasn't successfully loaded, or there was an issue resizing/manipulating/initializing the TextBuffer.
  * */
-int load_file() {
+int load_file_and_initialize_buffer() {
 
     // We'll open all files in read mode. If there's no file, we'll just have a blank buffer.
     // Only when writing to file, will we rewrite or create + write to the file.
     editor_state.fp = fopen(editor_state.file_path, "r");
-    if (editor_state.fp == NULL) {
-        return -1;
 
-    } else {
+    // CreateTextBufferFromFile handles NULL values so we can just pass editor_state.fp and check the return
+    editor_state.current_buffer = CreateTextBufferFromFile(editor_state.fp);
 
-        char *line = NULL;
-        size_t len = 0;
-        ssize_t read;
-
-        while ((read = getline(&line, &len, editor_state.fp)) != -1 ) {
-
-        }
-
+    if (editor_state.current_buffer == NULL){
+        return MEM_ERROR;
     }
+
+    if (editor_state.fp == NULL){
+        return -1;
+    }
+
+    return 0;
 }
+
 
 void screen_append(const char *str, int size) {
 
