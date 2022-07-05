@@ -51,6 +51,7 @@ void TestGapBuffer(){
     const char sample10[] ="bbbaaaaaaaaaaaaaaaaaddd";
     const char sample11[] = "cccaaax";
     const char sample12[] ="ybbbaaaaaaaaaaaaaaaaaddd";
+    const char sample13[] ="ybbbaaaaaaaaaaaaaaaaadddp";
 
 
     printf("Test 1, empty string\n");
@@ -154,13 +155,26 @@ void TestGapBuffer(){
     assert(err == 0);
 
     string_holder = GapBufferGetString(buffer2);
-
-    printf("%s\n", string_holder);
-
     string_comp_assert(string_holder, sample12);
 
 
-    printf("Test 6 Backspace\n");
+    printf("Test 6 Create From string\n");
+
+    GapBuffer* buffer3 = CreateGapBufferFromString((char *)sample12, 10);
+    assert(buffer != NULL);
+
+    string_holder = GapBufferGetString(buffer3);
+    string_comp_assert(string_holder, sample12);
+
+    printf("Test 6.1 Create From string\n");
+
+    err = GapBufferInsertChar(buffer3, 'p');
+    assert(err == 0);
+
+    string_holder = GapBufferGetString(buffer3);
+    string_comp_assert(string_holder, sample13);
+
+    printf("Test 7 Backspace\n");
     for (int i=0; i<7; i++){
         GapBufferBackSpace(buffer);
     }

@@ -224,3 +224,35 @@ GapBuffer* GapBufferSplit(GapBuffer *instance) {
 
 }
 #pragma clang diagnostic pop
+
+
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "DanglingPointer" // Ignore because CreateGapBuffer never returns a deallocated pointer.
+GapBuffer* CreateGapBufferFromString(char* str, int gap_len){
+
+    int s_len = strlen(str);
+    int capacity = s_len + gap_len;
+    GapBuffer* new_buffer;
+
+    if (str == NULL || s_len == 0){
+        return CreateGapBuffer(gap_len);
+
+    } else {
+        new_buffer = CreateGapBuffer(capacity);
+
+        if (new_buffer == NULL){
+            return NULL;
+        }
+
+        // Copy the string to the buffer
+        memcpy(new_buffer->buffer, str, s_len);
+
+        // update gap values
+        new_buffer->str_len = s_len;
+        new_buffer->gap_loc = s_len;
+        new_buffer->gap_len = gap_len;
+
+        return new_buffer;
+    }
+}
+#pragma clang diagnostic pop

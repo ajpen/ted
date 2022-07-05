@@ -92,5 +92,13 @@ char* GapBufferGetString(GapBuffer* instance);
 GapBuffer* GapBufferSplit(GapBuffer *instance);
 
 
+/*
+ * Create a gap buffer containing the contents of str. The gap length is initialized to 'gap_len'.
+ * The gap is always positioned at the end of the string.
+ * if str is invalid, defaults to CreateGapBuffer(gap_len);
+ *
+ * returns an initialized GapBuffer* or NULL on error
+ * */
+GapBuffer* CreateGapBufferFromString(char* str, int gap_len);
 
 #endif //TED_GAP_H
