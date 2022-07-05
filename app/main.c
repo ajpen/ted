@@ -116,9 +116,12 @@ int main(int argc, char* argv[]) {
 // TODO: Moving the cursor makes the cursor get a 'h' in the cursor space. Why?
 /* Cursor Movement */
 void move_cursor() {
-    char buf[32];
-    sprintf(buf, "\x1b[%d;%dH", editor_state.vcursor_row, editor_state.vcursor_col);
-    screen_append(buf, strlen(buf));
+
+    // Whether the cursor can be moved depends on where we currently are, the number of lines between the current cursor
+    // row and the last line in the textbuffer,
+    //
+
+
 }
 
 void up_arrow() {
@@ -129,7 +132,9 @@ void up_arrow() {
 }
 
 void down_arrow() {
-    if (editor_state.vcursor_row < editor_state.screen_rows-1){
+
+    // "-2" because we reserved a row to the status bar.
+    if (editor_state.vcursor_row < editor_state.screen_rows - 2){
         editor_state.vcursor_row++;
     }
 }
@@ -141,7 +146,7 @@ void left_arrow() {
 }
 
 void right_arrow() {
-    if (editor_state.vcursor_col < editor_state.screen_cols){
+    if (editor_state.vcursor_col < editor_state.screen_cols - 1){
         editor_state.vcursor_col++;
     }
 }
@@ -403,7 +408,9 @@ void draw_screen(){
     }
 
     // Move cursor to the cursor position
-    move_cursor();
+    char buf[32];
+    sprintf(buf, "\x1b[%d;%dH", editor_state.vcursor_row + 1, editor_state.vcursor_col + 1);
+    screen_append(buf, strlen(buf));
 
     // Enable cursor
     screen_append("\x1b[?25h", 6);
@@ -473,11 +480,29 @@ void draw_status_line(int line_size) {
 }
 
 
-int load_file(){
-    editor_state.fp = NULL;
-    return -1;
-}
+/*
+ * Returns -1 if the file doesn't exist and MEM_ERROR if it wasn't successfully loaded
+ * */
+int load_file() {
 
+    // We'll open all files in read mode. If there's no file, we'll just have a blank buffer.
+    // Only when writing to file, will we rewrite or create + write to the file.
+    editor_state.fp = fopen(editor_state.file_path, "r");
+    if (editor_state.fp == NULL) {
+        return -1;
+
+    } else {
+
+        char *line = NULL;
+        size_t len = 0;
+        ssize_t read;
+
+        while ((read = getline(&line, &len, editor_state.fp)) != -1 ) {
+
+        }
+
+    }
+}
 
 void screen_append(const char *str, int size) {
 
