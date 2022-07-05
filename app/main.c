@@ -13,15 +13,23 @@
 #define DEFAULT_LINE_SIZE 200
 #define DEFAULT_NUM_LINES 1000
 
-
 // CTRL_KEY macro returns the value of the k as a control key combination; basically CTRL + k
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 // ANSI Escape Codes
+#define ESC '\x1b'
 #define INVERT_COLOUR "\x1b[7m"
 #define INVERT_COLOUR_SIZE 4
 #define RESET_INVERT_COLOUR "x1b[27m"
 #define RESET_INVERT_COLOUR_SIZE 5
+
+/* Constants */
+enum specialKeys {
+    ARROW_UP = 1000,
+    ARROW_DOWN,
+    ARROW_LEFT,
+    ARROW_RIGHT
+};
 
 /* structs */
 
@@ -50,8 +58,8 @@ struct EditorState {
     struct VirtualScreen screen;
     int screen_rows;
     int screen_cols;
-    int screen_cur_row;
-    int screen_cur_col;
+    int vcursor_row;
+    int vcursor_col;
 };
 
 /* global editor state */
@@ -71,7 +79,7 @@ void enableRawMode();
 /* Screen Manipulation */
 void render_screen();
 void draw_screen();
-void draw_status_line(int line_size, int cur_screen_pos);
+void draw_status_line(int line_size);
 
 void screen_append(const char *str, int size);
 
@@ -83,7 +91,7 @@ void right_arrow();
 void left_arrow();
 
 /* Input */
-char read_char();
+int read_char();
 void process_keypress();
 
 /* File Manipulation*/
@@ -103,87 +111,89 @@ int main(int argc, char* argv[]) {
 }
 
 
-
 /******************************* Implementations *********************************/
 
+// TODO: Moving the cursor makes the cursor get a 'h' in the cursor space. Why?
 /* Cursor Movement */
 void move_cursor() {
     char buf[32];
-    sprintf(buf, "\x1b[%d;%dH", editor_state.screen_cur_row, editor_state.screen_cur_col);
+    sprintf(buf, "\x1b[%d;%dH", editor_state.vcursor_row, editor_state.vcursor_col);
     screen_append(buf, strlen(buf));
 }
 
 void up_arrow() {
-    write(STDOUT_FILENO, "\x1b[A", 3);
-}
 
-void down_arrow() {
-    write(STDOUT_FILENO, "\x1b[B", 3);
-}
-
-void right_arrow() {
-    write(STDOUT_FILENO, "\x1b[C", 3);
-}
-
-void left_arrow() {
-    write(STDOUT_FILENO, "\x1b[D", 3);
-}
-
-
-void set_window_size() {
-    struct winsize ws;
-    int rows, cols;
-
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
-        // panic("Failed to get window size");
-
-        // manually get window size
-        if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12 != 12)) {
-            panic("Failed to get window size");
-        }
-
-        // read the response
-        char buf[32];
-        for (int i = 0; i < sizeof(buf); i++) {
-            if (read(STDIN_FILENO, &buf[i], 1) != 1) {
-                panic("Failed to get window size");
-            }
-
-            if (buf[i] == 'R') {
-                buf[i + 1] = '\0';
-                break;
-            }
-        }
-
-        // parse the response and set the windows size
-        if (sscanf(buf, "%d;%d", &editor_state.screen_rows, &editor_state.screen_cols) != 2) {
-            panic("Failed to get windows size");
-        }
-
-    } else {
-        editor_state.screen_rows = ws.ws_row;
-        editor_state.screen_cols = ws.ws_col;
+    if (editor_state.vcursor_row > 0){
+        editor_state.vcursor_row--;
     }
 }
 
+void down_arrow() {
+    if (editor_state.vcursor_row < editor_state.screen_rows-1){
+        editor_state.vcursor_row++;
+    }
+}
+
+void left_arrow() {
+    if (editor_state.vcursor_col > 0){
+        editor_state.vcursor_col--;
+    }
+}
+
+void right_arrow() {
+    if (editor_state.vcursor_col < editor_state.screen_cols){
+        editor_state.vcursor_col++;
+    }
+}
+
+
 /* Input */
-char read_char(){
+int read_char(){
     char c;
     ssize_t err;
 
-    while((err = read(STDIN_FILENO, &c, 1)) != 0) {
+    while((err = read(STDIN_FILENO, &c, 1)) != 1) {
         if (err == EAGAIN) {
             panic("read_char: read() returned EAGAIN");
         }
     }
-    return c;
+
+    // Handle escape sequences
+    if (c == ESC){
+        char seq[3];
+
+        if (read(STDIN_FILENO, &seq[0], 1) != 1) return ESC;
+        if (read(STDIN_FILENO, &seq[1], 1) != 1) return ESC;
+
+        if (seq[0] == '['){
+            switch (seq[1]) {
+                case 'A': return ARROW_UP;
+                case 'B': return ARROW_DOWN;
+                case 'C': return ARROW_RIGHT;
+                case 'D': return ARROW_LEFT;
+            }
+        }
+
+        return ESC;
+
+    } else {
+        return c;
+    }
 }
 
 
 void process_keypress(){
 
-    char c = read_char();
+    int c = read_char();
+
     switch (c) {
+
+        case ARROW_UP: up_arrow(); break;
+        case ARROW_DOWN: down_arrow(); break;
+        case ARROW_LEFT: left_arrow(); break;
+        case ARROW_RIGHT: right_arrow(); break;
+
+
         case CTRL_KEY('q'):
 
             // Clear screen
@@ -222,8 +232,8 @@ void initialize(int argc, char* argv[]){
     editor_state.screen.buf_pos = 0;
 
     // Cursor home position
-    editor_state.screen_cur_col = 0;
-    editor_state.screen_cur_row = 0;
+    editor_state.vcursor_col = 0;
+    editor_state.vcursor_row = 0;
 
     editor_state.flushed = 1;
 }
@@ -246,11 +256,46 @@ void panic(const char* message){
     write(STDOUT_FILENO, "\x1b[2J", 4);
     write(STDOUT_FILENO, "\x1b[H", 3);
     // Enable cursor
-    screen_append("\x1b[?25h", 6);
+    write(STDOUT_FILENO,"\x1b[?25h", 6);
     perror(message);
     exit(1);
 }
 
+void set_window_size() {
+    struct winsize ws;
+    int rows, cols;
+
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
+        // panic("Failed to get window size");
+
+        // manually get window size
+        if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12 != 12)) {
+            panic("Failed to get window size");
+        }
+
+        // read the response
+        char buf[32];
+        for (int i = 0; i < sizeof(buf); i++) {
+            if (read(STDIN_FILENO, &buf[i], 1) != 1) {
+                panic("Failed to get window size");
+            }
+
+            if (buf[i] == 'R') {
+                buf[i + 1] = '\0';
+                break;
+            }
+        }
+
+        // parse the response and set the windows size
+        if (sscanf(buf, "%d;%d", &editor_state.screen_rows, &editor_state.screen_cols) != 2) {
+            panic("Failed to get windows size");
+        }
+
+    } else {
+        editor_state.screen_rows = ws.ws_row;
+        editor_state.screen_cols = ws.ws_col;
+    }
+}
 
 void disableRawMode() {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &editor_state.orig_termios) == -1) {
@@ -349,7 +394,7 @@ void draw_screen(){
     for (; screen_str_pos<editor_state.screen_rows; screen_str_pos++){
 
         if (screen_str_pos == editor_state.screen_rows-1){
-            draw_status_line(editor_state.screen_cols, screen_str_pos);
+            draw_status_line(editor_state.screen_cols);
         }
 
         if (screen_str_pos < editor_state.screen_rows-1){
@@ -365,7 +410,7 @@ void draw_screen(){
 }
 
 
-void draw_status_line(int line_size, int cur_screen_pos) {
+void draw_status_line(int line_size) {
 
     const char commands[] = "Ctrl+Q-quit Ctrl+S-Save";
     unsigned int commands_len = sizeof commands-1;
