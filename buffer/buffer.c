@@ -184,3 +184,64 @@ char *TextBufferGetLine(TextBuffer *instance, int row) {
 
     return GapBufferGetString(instance->lines[row]);
 }
+
+TextBuffer* CreateTextBufferFromFile(FILE* fp){
+
+    TextBuffer* new_tbuffer = CreateTextBuffer(DEFAULT_CAPACITY, DEFAULT_GAP_BUF_CAP);
+
+    if (new_tbuffer == NULL) {
+        return NULL;
+    }
+
+    if (fp == NULL){
+        return new_tbuffer;
+    }
+
+    // Delete the first line. Reset the cursor and last line positions
+    DestroyGapBuffer(new_tbuffer->lines[new_tbuffer->last_line_loc]);
+    new_tbuffer->last_line_loc = -1;
+
+    // Read line and create gap buffer from the line, then append it to the text buffer. update last line pos
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    int line_gap_size;
+
+    while ((read = getline(&line, &len, fp)) != -1 ) {
+
+        // We dont want to include the newline character
+        if (line[read-1] == '\n') {
+            line[read - 1] = '\0';
+        }
+
+        // reallocate if out of space
+        if (new_tbuffer->last_line_loc == new_tbuffer->lines_capacity-1){
+            new_tbuffer->lines = realloc(
+                    new_tbuffer->lines, sizeof(GapBuffer*) * new_tbuffer->lines_capacity * 2);
+
+            if (new_tbuffer->lines == NULL){
+                DestroyTextBuffer(new_tbuffer);
+                return NULL;
+            }
+
+            new_tbuffer->lines_capacity = new_tbuffer->lines_capacity * 2;
+        }
+
+        // Create a new gap buf with the read line, append it to the tbuffer and update the last line location
+
+        // the gap size will be max(DEFAULT_GAP_BUF_CAP, read * 2)
+        line_gap_size = read * 2 < DEFAULT_GAP_BUF_CAP ? DEFAULT_GAP_BUF_CAP : read * 2;
+
+        new_tbuffer->lines[new_tbuffer->last_line_loc + 1] = CreateGapBufferFromString(line, line_gap_size);
+
+        if (new_tbuffer->lines[new_tbuffer->last_line_loc + 1] == NULL){
+            DestroyTextBuffer(new_tbuffer);
+            return NULL;
+        }
+
+        new_tbuffer->last_line_loc++;
+    }
+
+    free(line);
+    return new_tbuffer;
+}

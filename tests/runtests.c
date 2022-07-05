@@ -14,8 +14,26 @@
 void TestGapBuffer();
 void TestTextBuffer();
 
+FILE* test_fp;
+
+/*
+ * Contents of tests/runtests.txt
+aaaaaaaaaaa\n
+aaaaaaaaaa\n
+aaaaaaaaa\n
+ * */
+char test_file_path[] = "tests/runtests.txt";
+
 
 int main(){
+
+    if ((test_fp = fopen(test_file_path, "r")) == NULL){
+        printf("Error: Failed to open test file. Please run the test in the project directory.\n'"
+               "tests/runtests.c' must be valid in the working directory");
+
+        exit(1);
+    }
+
     TestGapBuffer();
     TestTextBuffer();
     printf("All tests passed!\n");
@@ -186,6 +204,7 @@ void TestGapBuffer(){
     printf("Cleanup...\n");
     DestroyGapBuffer(buffer);
     DestroyGapBuffer(buffer2);
+    DestroyGapBuffer(buffer3);
 
     printf("GapBuffer Tests Passed.");
 }
@@ -248,8 +267,26 @@ void TestTextBuffer(){
     string_holder = TextBufferGetLine(texBuffer, texBuffer->cursorRow-1);
     string_comp_assert(string_holder, sample5);
 
+
+    printf("Test 5 Create from file\n");
+    TextBuffer* textBuffer2 = CreateTextBufferFromFile(test_fp);
+    assert(textBuffer2 != NULL);
+    assert(textBuffer2->cursorRow == 0);
+    assert(textBuffer2->cursorCol == 0);
+    assert(textBuffer2->last_line_loc == 2);
+
+    string_holder = TextBufferGetLine(textBuffer2, 0);
+    string_comp_assert(string_holder, sample3);
+
+    string_holder = TextBufferGetLine(textBuffer2, 1);
+    string_comp_assert(string_holder, sample4);
+
+    string_holder = TextBufferGetLine(textBuffer2, 2);
+    string_comp_assert(string_holder, sample5);
+
     printf("Cleanup...\n");
     DestroyTextBuffer(texBuffer);
+
 
     printf("TextBuffer Tests Passed.\n");
 }

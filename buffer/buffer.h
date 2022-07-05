@@ -6,7 +6,10 @@
 #define TED_BUFFER_H
 
 #include "gap.h"
+#include <stdio.h>
 
+#define DEFAULT_CAPACITY 100
+#define DEFAULT_GAP_BUF_CAP 100
 
 /*
  * TextBuffer
@@ -125,5 +128,14 @@ int TextBufferNewLine(TextBuffer* instance);
  * */
 char* TextBufferGetLine(TextBuffer* instance, int row);
 
+
+
+/*
+ * Creates a TextBuffer with the contents of the file pointed to by the file pointer given.
+ * By default, the gap buffer for each line is double the line size or DEFAULT_GAP_BUF_CAP, whichever is greater
+ * If fp is NULL, behaves the same as CreateTextBuffer(DEFAULT_CAPACITY, DEFAULT_GAP_BUF_CAP),
+ * returns NULL if there's an error, otherwise an initialized TextBuffer*
+ * */
+TextBuffer* CreateTextBufferFromFile(FILE* fp);
 
 #endif //TED_BUFFER_H
