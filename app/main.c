@@ -50,8 +50,8 @@ struct EditorState {
     struct VirtualScreen screen;
     int screen_rows;
     int screen_cols;
-    int screen_cursor_row;
-    int screen_cursor_col;
+    int screen_cur_row;
+    int screen_cur_col;
 };
 
 /* global editor state */
@@ -76,7 +76,7 @@ void draw_status_line(int line_size, int cur_screen_pos);
 void screen_append(const char *str, int size);
 
 /* Cursor Movement */
-void move_cursor(int row, int col);
+void move_cursor();
 void up_arrow();
 void down_arrow();
 void right_arrow();
@@ -107,10 +107,10 @@ int main(int argc, char* argv[]) {
 /******************************* Implementations *********************************/
 
 /* Cursor Movement */
-void move_cursor(int row, int col) {
+void move_cursor() {
     char buf[32];
-    sprintf(buf, "\x1b[%d;%dH", row, col);
-    write(STDOUT_FILENO, buf, strlen(buf));
+    sprintf(buf, "\x1b[%d;%dH", editor_state.screen_cur_row, editor_state.screen_cur_col);
+    screen_append(buf, strlen(buf));
 }
 
 void up_arrow() {
@@ -171,7 +171,7 @@ char read_char(){
     char c;
     ssize_t err;
 
-    while((err = read(STDIN_FILENO, &c, 1)) != -1) {
+    while((err = read(STDIN_FILENO, &c, 1)) != 0) {
         if (err == EAGAIN) {
             panic("read_char: read() returned EAGAIN");
         }
@@ -181,6 +181,7 @@ char read_char(){
 
 
 void process_keypress(){
+
     char c = read_char();
     switch (c) {
         case CTRL_KEY('q'):
@@ -188,8 +189,6 @@ void process_keypress(){
             // Clear screen
             write(STDOUT_FILENO, "\x1b[2J", 4);
             write(STDOUT_FILENO, "\x1b[H", 3);
-            // Enable cursor
-            screen_append("\x1b[?25h", 6);
 
             cleanup();
             exit(0);
@@ -198,6 +197,7 @@ void process_keypress(){
 }
 
 void initialize(int argc, char* argv[]){
+
     // Get file path information
     if (argc >= 2){
         editor_state.file_path = argv[1];
@@ -220,6 +220,12 @@ void initialize(int argc, char* argv[]){
     editor_state.screen.len = editor_state.screen_rows * editor_state.screen_cols * sizeof(char) * 2;
     editor_state.screen.buffer = malloc(editor_state.screen.len);
     editor_state.screen.buf_pos = 0;
+
+    // Cursor home position
+    editor_state.screen_cur_col = 0;
+    editor_state.screen_cur_row = 0;
+
+    editor_state.flushed = 1;
 }
 
 void cleanup(){
@@ -236,7 +242,11 @@ void cleanup(){
 }
 
 void panic(const char* message){
-    render_screen();
+    // Clear screen
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
+    // Enable cursor
+    screen_append("\x1b[?25h", 6);
     perror(message);
     exit(1);
 }
@@ -322,6 +332,7 @@ void render_screen() {
 
 
 void draw_screen(){
+
     editor_state.screen.buf_pos = 0; // reset the screen
     int screen_str_pos = 0;  // position on the screen
 
@@ -346,8 +357,8 @@ void draw_screen(){
         }
     }
 
-    // Move cursor to the top
-    screen_append("\x1b[H", 3);
+    // Move cursor to the cursor position
+    move_cursor();
 
     // Enable cursor
     screen_append("\x1b[?25h", 6);
@@ -414,8 +425,6 @@ void draw_status_line(int line_size, int cur_screen_pos) {
 
     // Finally, print help
     screen_append(commands, commands_len);
-
-    // disable inversion and move cursor to position on screen
 }
 
 
