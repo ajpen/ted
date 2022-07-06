@@ -23,6 +23,9 @@
 #define RESET_INVERT_COLOUR "x1b[27m"
 #define RESET_INVERT_COLOUR_SIZE 5
 
+
+#define LINE_NUM_DIGIT_WIDTH 2
+
 /* Constants */
 enum specialKeys {
     ARROW_UP = 1000,
@@ -80,6 +83,16 @@ void enableRawMode();
 void render_screen();
 void draw_screen();
 void draw_status_line(int line_size);
+void draw_editor_window();
+
+/*
+ * draws ' %d ' with inverted colours to the current position of the screen where %d is the number or blank spaces.
+ * if number is positive, %d is the exact string representation of number.
+ * if number is a negative number, %d becomes abs(number) spaces. e.g. if number = -2, '    ' is drawn (2 spaces)
+ *
+ * returns the number of characters drawn
+ * */
+int draw_line_number(int number);
 
 void screen_append(const char *str, int size);
 
@@ -241,6 +254,31 @@ void initialize(int argc, char* argv[]){
     editor_state.flushed = 1;
 }
 
+/*
+ * Returns:
+ * -1: If there was an issue with opening the file; the buffer is still initialized as a blank buffer
+ * MEM_ERROR if it wasn't successfully loaded, or there was an issue resizing/manipulating/initializing the TextBuffer.
+ * */
+int load_file_and_initialize_buffer() {
+
+    // We'll open all files in read mode. If there's no file, we'll just have a blank buffer.
+    // Only when writing to file, will we rewrite or create + write to the file.
+    editor_state.fp = fopen(editor_state.file_path, "r");
+
+    // CreateTextBufferFromFile handles NULL values so we can just pass editor_state.fp and check the return
+    editor_state.current_buffer = CreateTextBufferFromFile(editor_state.fp);
+
+    if (editor_state.current_buffer == NULL){
+        return MEM_ERROR;
+    }
+
+    if (editor_state.fp == NULL){
+        return -1;
+    }
+
+    return 0;
+}
+
 void cleanup(){
     // free memory for screen
     free(editor_state.screen.buffer);
@@ -393,17 +431,8 @@ void draw_screen(){
     // Move cursor to the top
     screen_append("\x1b[H", 3);
 
-    // TESTING STATUS BAR
-    for (; screen_str_pos<editor_state.screen_rows; screen_str_pos++){
-
-        if (screen_str_pos == editor_state.screen_rows-1){
-            draw_status_line(editor_state.screen_cols);
-        }
-
-        if (screen_str_pos < editor_state.screen_rows-1){
-            screen_append("\r\n", 2);
-        }
-    }
+    draw_editor_window();
+    draw_status_line(editor_state.screen_cols);
 
     // Move cursor to the cursor position
     char buf[32];
@@ -477,32 +506,107 @@ void draw_status_line(int line_size) {
     screen_append(commands, commands_len);
 }
 
+int draw_line_number(int number){
 
-/*
- * Returns:
- * -1: If there was an issue with opening the file; the buffer is still initialized as a blank buffer
- * MEM_ERROR if it wasn't successfully loaded, or there was an issue resizing/manipulating/initializing the TextBuffer.
- * */
-int load_file_and_initialize_buffer() {
+    char* buffer = NULL;
+    char* pad_buf = NULL;
 
-    // We'll open all files in read mode. If there's no file, we'll just have a blank buffer.
-    // Only when writing to file, will we rewrite or create + write to the file.
-    editor_state.fp = fopen(editor_state.file_path, "r");
+    char number_format[] = " %d ";
+    char blank_format[]  = " %*s ";
+    int num_spaces = snprintf(NULL, 0, "%d", abs(number));
+    int written_chars = 0;
 
-    // CreateTextBufferFromFile handles NULL values so we can just pass editor_state.fp and check the return
-    editor_state.current_buffer = CreateTextBufferFromFile(editor_state.fp);
+    int padding = LINE_NUM_DIGIT_WIDTH - num_spaces < 0 ? 0 : LINE_NUM_DIGIT_WIDTH - num_spaces;
 
-    if (editor_state.current_buffer == NULL){
-        return MEM_ERROR;
+    if (asprintf(&pad_buf, "%*s", padding, "") == -1){
+        panic("draw line number cant format the line number with spaces");
     }
 
-    if (editor_state.fp == NULL){
-        return -1;
+
+    if (number < 0){
+        if (asprintf(&buffer, blank_format, num_spaces, "") == -1){
+            panic("draw line number cant format the line number with spaces");
+        }
+
+    } else {
+        asprintf(&buffer, number_format, number);
     }
 
-    return 0;
+    screen_append(INVERT_COLOUR, INVERT_COLOUR_SIZE);
+    screen_append(pad_buf, strlen(pad_buf));
+    screen_append(buffer, strlen(buffer));
+    screen_append("\x1b[0m", 4);
+
+    written_chars = strlen(buffer) + strlen(pad_buf) + INVERT_COLOUR_SIZE + 4;
+
+    free(pad_buf);
+    free(buffer);
+
+    return written_chars;
 }
 
+void draw_editor_window(){
+
+    char* line = NULL;
+    int cur_line = editor_state.current_buffer->cursorRow;
+    int lines_written = 0;
+    int remaining_line_space;
+
+    while (cur_line <= editor_state.current_buffer->last_line_loc && lines_written < editor_state.screen_rows - 2){
+
+        // First draw the line number column and calculate the remaining space
+        remaining_line_space = editor_state.screen_cols - draw_line_number(cur_line + 1);
+
+        // Let's draw cur_line using as many screen rows as needed.
+        line = TextBufferGetLine(editor_state.current_buffer, cur_line);
+
+        if (line == NULL){
+            panic("draw editor cant get text of current line in buffer");
+        }
+
+        // Draw the line
+        if (strlen(line) > remaining_line_space) {
+            // Here we need multiple screen rows to draw 'line' we'll use whatever is available to draw it
+
+            int i=0;
+            int len_to_write;
+
+            do {
+
+                // if remaining line can fit in screen space, write the remaining line, else fill the remaining space
+                len_to_write = remaining_line_space < strlen(&line[i]) ? remaining_line_space : strlen(&line[i]);
+
+                screen_append(&line[i], len_to_write);
+                screen_append("\r\n", 2); screen_append("\x1b[K", 3);
+                i += len_to_write;
+                lines_written++;
+
+                // Screen is full, lets stop
+                if (lines_written == editor_state.screen_rows - 2){
+                    break;
+                }
+                // Write a blank line number column if we still need to write more to screen
+                if (i < strlen(line)){
+                    remaining_line_space = editor_state.screen_cols - draw_line_number((cur_line + 1) * -1);
+                }
+
+            } while (i < strlen(line) - 1);
+
+        } else {
+            screen_append(line, strlen(line));
+            screen_append("\r\n", 2);
+            lines_written++;
+        }
+
+        free(line);
+        cur_line++;
+    }
+
+    // If there's remaining space, fill with blanks
+    for (; lines_written < editor_state.screen_rows-2; lines_written++){
+        screen_append("\r\n", 2);
+    }
+}
 
 void screen_append(const char *str, int size) {
 
