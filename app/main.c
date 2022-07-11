@@ -49,7 +49,6 @@ struct EditorState {
     // File states
     char* file_name;
     char* file_path;         // path to file.
-    FILE* fp;                // Opened file buffer. NULL if editor opened with a new file
     int flushed;             // was the most recent changes flushed to disk
 
     // buffer states
@@ -209,6 +208,11 @@ void process_keypress(){
         case ARROW_RIGHT: right_arrow(); break;
 
 
+        // Save buffer state to file
+        case CTRL_KEY('s'):
+            flush_buffer_to_file();
+            break;
+
         case CTRL_KEY('q'):
 
             // Clear screen
@@ -260,19 +264,20 @@ int load_file_and_initialize_buffer() {
 
     // We'll open all files in read mode. If there's no file, we'll just have a blank buffer.
     // Only when writing to file, will we rewrite or create + write to the file.
-    editor_state.fp = fopen(editor_state.file_path, "r");
+    FILE* fp = fopen(editor_state.file_path, "r");
 
     // CreateTextBufferFromFile handles NULL values so we can just pass editor_state.fp and check the return
-    editor_state.current_buffer = CreateTextBufferFromFile(editor_state.fp);
+    editor_state.current_buffer = CreateTextBufferFromFile(fp);
 
     if (editor_state.current_buffer == NULL){
         return MEM_ERROR;
     }
 
-    if (editor_state.fp == NULL){
+    if (fp == NULL){
         return -1;
     }
 
+    close(fp);
     return 0;
 }
 
@@ -282,11 +287,6 @@ void cleanup(){
 
     // Free the text buffer
     DestroyTextBuffer(editor_state.current_buffer);
-
-    // clean up file pointers
-    if (editor_state.fp != NULL){
-        fclose(editor_state.fp);
-    }
 }
 
 void panic(const char* message){
@@ -616,4 +616,33 @@ void screen_append(const char *str, int size) {
     }
 }
 
+/*
+ * Returns -1 when unable to open the file, -2 on write error, 0 on success
+ * */
+int flush_buffer_to_file(){
 
+    FILE* fp = fopen(editor_state.file_path, "w");
+    char* line = NULL;
+
+    if (fp == NULL){
+        return -1;
+    }
+
+    for (int i=0; i<=editor_state.current_buffer->last_line_loc; i++){
+        line = TextBufferGetLine(editor_state.current_buffer, i);
+
+        if (line == NULL){
+            fclose(fp);
+            return -2;
+        }
+
+
+        if (fputs(line, fp) < strlen(line)){
+            fclose(fp);
+            return -2;
+        }
+    }
+
+    fclose(fp);
+    return 0;
+}
