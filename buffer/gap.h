@@ -9,7 +9,7 @@
 #ifndef TED_GAP_H
 #define TED_GAP_H
 
-#define MEM_ERROR -1
+#define MEM_ERROR -128
 
 /*
  * Gap Buffer Data structure
