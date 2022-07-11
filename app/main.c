@@ -20,8 +20,6 @@
 #define ESC '\x1b'
 #define INVERT_COLOUR "\x1b[7m"
 #define INVERT_COLOUR_SIZE 4
-#define RESET_INVERT_COLOUR "x1b[27m"
-#define RESET_INVERT_COLOUR_SIZE 5
 
 
 #define LINE_NUM_DIGIT_WIDTH 2
@@ -126,7 +124,6 @@ int main(int argc, char* argv[]) {
 
 /******************************* Implementations *********************************/
 
-// TODO: Moving the cursor makes the cursor get a 'h' in the cursor space. Why?
 /* Cursor Movement */
 void move_cursor() {
 
@@ -413,7 +410,7 @@ void enableRawMode(){
 void render_screen() {
 
     // flush internal screen to display
-    write(STDOUT_FILENO, editor_state.screen.buffer, editor_state.screen.len);
+    write(STDOUT_FILENO, editor_state.screen.buffer, strlen(editor_state.screen.buffer));
 }
 
 
@@ -441,6 +438,9 @@ void draw_screen(){
 
     // Enable cursor
     screen_append("\x1b[?25h", 6);
+
+    // End the string (so we can get strlen)
+    screen_append("\0", 1);
 }
 
 
