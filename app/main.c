@@ -515,9 +515,8 @@ void draw_editor_window(){
     int lines_written = 0;
     int remaining_line_space;
 
-    while (cur_line <= editor_state.current_buffer->last_line_loc && lines_written < editor_state.screen_rows - 2){
+    while (cur_line <= editor_state.current_buffer->last_line_loc && lines_written < editor_state.screen_rows - 1){
 
-        // First draw the line number column and calculate the remaining space
         remaining_line_space = editor_state.screen_cols;
 
         // Let's draw cur_line using as many screen rows as needed.
