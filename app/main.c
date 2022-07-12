@@ -138,11 +138,6 @@ void up_arrow() {
     if (row > 0){
         row--;
 
-        // we need to adjust the col position of the cursor too, since we're on a new line.
-        if (col > editor_state.current_buffer->lines[row]->str_len){
-            col = editor_state.current_buffer->lines[row]->str_len;
-        }
-
         TextBufferMoveCursor(editor_state.current_buffer, row, col);
 
         // finally, if we need to, lets tell the virtual screen which line to start from
@@ -163,11 +158,6 @@ void down_arrow() {
     if (row < editor_state.current_buffer->last_line_loc){
         row++;
 
-        // we need to adjust the col position of the cursor too, since we're on a new line.
-        if (col > editor_state.current_buffer->lines[row]->str_len) {
-            col = editor_state.current_buffer->lines[row]->str_len;
-        }
-
         TextBufferMoveCursor(editor_state.current_buffer, row, col);
 
         // finally, if we need to, lets tell the virtual screen which line to start rendering from
@@ -181,14 +171,14 @@ void down_arrow() {
 
 void left_arrow() {
     int row = editor_state.current_buffer->cursorRow;
-    int col = editor_state.current_buffer->cursorCol;
-    TextBufferMoveCursor(editor_state.current_buffer, row, col--);
+    int col = editor_state.current_buffer->cursorCol - 1;
+    TextBufferMoveCursor(editor_state.current_buffer, row, col);
 }
 
 void right_arrow() {
     int row = editor_state.current_buffer->cursorRow;
-    int col = editor_state.current_buffer->cursorCol;
-    TextBufferMoveCursor(editor_state.current_buffer, row, col++);
+    int col = editor_state.current_buffer->cursorCol + 1;
+    TextBufferMoveCursor(editor_state.current_buffer, row, col);
 }
 
 
