@@ -160,7 +160,6 @@ void down_arrow() {
     int col = editor_state.current_buffer->cursorCol;
     int row = editor_state.current_buffer->cursorRow;
 
-    // "-2" because we reserved a row to the status bar.
     if (row < editor_state.current_buffer->last_line_loc){
         row++;
 
@@ -171,8 +170,8 @@ void down_arrow() {
 
         TextBufferMoveCursor(editor_state.current_buffer, row, col);
 
-        // finally, if we need to, lets tell the virtual screen which line to start from
-        if (row > editor_state.vrow_start + editor_state.screen_rows) {
+        // finally, if we need to, lets tell the virtual screen which line to start rendering from
+        if (row > (editor_state.vrow_start + editor_state.screen_rows - 2)) {
             editor_state.vrow_start++;
         }
     }
@@ -464,7 +463,10 @@ void draw_screen(){
 
     // Move cursor to the cursor position
     char buf[32];
-    sprintf(buf, "\x1b[%d;%dH", editor_state.current_buffer->cursorRow, editor_state.current_buffer->cursorCol);
+    sprintf(buf, "\x1b[%d;%dH",
+            (editor_state.current_buffer->cursorRow - editor_state.vrow_start) + 1,
+            editor_state.current_buffer->cursorCol + 1);
+
     screen_append(buf, strlen(buf));
 
     // Enable cursor
