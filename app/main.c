@@ -57,8 +57,7 @@ struct EditorState {
     struct VirtualScreen screen;
     int screen_rows;
     int screen_cols;
-    int vcursor_row;
-    int vcursor_col;
+    int vrow_start;
 };
 
 /* global editor state */
@@ -133,29 +132,64 @@ void move_cursor() {
 
 void up_arrow() {
 
-    if (editor_state.vcursor_row > 0){
-        editor_state.vcursor_row--;
+    int col = editor_state.current_buffer->cursorCol;
+    int row = editor_state.current_buffer->cursorRow;
+
+    if (row > 0){
+        row--;
+
+        // we need to adjust the col position of the cursor too, since we're on a new line.
+        if (col > editor_state.current_buffer->lines[row]->str_len){
+            col = editor_state.current_buffer->lines[row]->str_len;
+        }
+
+        TextBufferMoveCursor(editor_state.current_buffer, row, col);
+
+        // finally, if we need to, lets tell the virtual screen which line to start from
+        if (row < editor_state.vrow_start) {
+            editor_state.vrow_start--;
+        }
+
     }
+
+    // ding the terminal if you figure out how to
 }
 
 void down_arrow() {
 
+    int col = editor_state.current_buffer->cursorCol;
+    int row = editor_state.current_buffer->cursorRow;
+
     // "-2" because we reserved a row to the status bar.
-    if (editor_state.vcursor_row < editor_state.screen_rows - 2){
-        editor_state.vcursor_row++;
+    if (row < editor_state.current_buffer->last_line_loc){
+        row++;
+
+        // we need to adjust the col position of the cursor too, since we're on a new line.
+        if (col > editor_state.current_buffer->lines[row]->str_len) {
+            col = editor_state.current_buffer->lines[row]->str_len;
+        }
+
+        TextBufferMoveCursor(editor_state.current_buffer, row, col);
+
+        // finally, if we need to, lets tell the virtual screen which line to start from
+        if (row > editor_state.vrow_start + editor_state.screen_rows) {
+            editor_state.vrow_start++;
+        }
     }
+
+    // ding terminal
 }
 
 void left_arrow() {
-    if (editor_state.vcursor_col > 0){
-        editor_state.vcursor_col--;
-    }
+    int row = editor_state.current_buffer->cursorRow;
+    int col = editor_state.current_buffer->cursorCol;
+    TextBufferMoveCursor(editor_state.current_buffer, row, col--);
 }
 
 void right_arrow() {
-    if (editor_state.vcursor_col < editor_state.screen_cols - 1){
-        editor_state.vcursor_col++;
-    }
+    int row = editor_state.current_buffer->cursorRow;
+    int col = editor_state.current_buffer->cursorCol;
+    TextBufferMoveCursor(editor_state.current_buffer, row, col++);
 }
 
 
@@ -246,9 +280,8 @@ void initialize(int argc, char* argv[]){
     editor_state.screen.buffer = malloc(editor_state.screen.len);
     editor_state.screen.buf_pos = 0;
 
-    // Cursor home position
-    editor_state.vcursor_col = 0;
-    editor_state.vcursor_row = 0;
+    // the line the screen starts printing from
+    editor_state.vrow_start = 0;
 
     editor_state.flushed = 1;
 }
@@ -431,7 +464,7 @@ void draw_screen(){
 
     // Move cursor to the cursor position
     char buf[32];
-    sprintf(buf, "\x1b[%d;%dH", editor_state.vcursor_row + 1, editor_state.vcursor_col + 1);
+    sprintf(buf, "\x1b[%d;%dH", editor_state.current_buffer->cursorRow, editor_state.current_buffer->cursorCol);
     screen_append(buf, strlen(buf));
 
     // Enable cursor
@@ -511,7 +544,7 @@ void draw_status_line(int line_size) {
 void draw_editor_window(){
 
     char* line = NULL;
-    int cur_line = editor_state.current_buffer->cursorRow;
+    int cur_line = editor_state.vrow_start;
     int lines_written = 0;
     int remaining_line_space;
 
