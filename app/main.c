@@ -25,10 +25,16 @@
 
 /* Constants */
 enum specialKeys {
+    BACKSPACE = 127,
     ARROW_UP = 1000,
     ARROW_DOWN,
     ARROW_LEFT,
-    ARROW_RIGHT
+    ARROW_RIGHT,
+    PAGE_UP,
+    PAGE_DOWN,
+    HOME_KEY,
+    END_KEY,
+    DEL_KEY
 };
 
 /* structs */
@@ -91,11 +97,12 @@ void draw_editor_window();
 void screen_append(const char *str, int size);
 
 /* Cursor Movement */
-void move_cursor();
 void up_arrow();
 void down_arrow();
 void right_arrow();
 void left_arrow();
+void page_up();
+void page_down();
 
 /* Input */
 int read_char();
@@ -119,16 +126,6 @@ int main(int argc, char* argv[]) {
 
 
 /******************************* Implementations *********************************/
-
-/* Cursor Movement */
-void move_cursor() {
-
-    // Whether the cursor can be moved depends on where we currently are, the number of lines between the current cursor
-    // row and the last line in the textbuffer,
-    //
-
-
-}
 
 void up_arrow() {
 
@@ -182,7 +179,25 @@ void right_arrow() {
 }
 
 
+void page_up() {
+    TextBufferMoveCursor(editor_state.current_buffer, 0, editor_state.current_buffer->cursorCol);
+    editor_state.vrow_start = 0;
+}
+
+void page_down() {
+    TextBufferMoveCursor(
+            editor_state.current_buffer,
+            editor_state.current_buffer->last_line_loc,
+            editor_state.current_buffer->cursorCol);
+
+    editor_state.vrow_start = editor_state.current_buffer->cursorRow - (editor_state.screen_rows - 2);
+}
+
 /* Input */
+/*
+ * read_char is heavily motivated by this tutorial: https://viewsourcecode.org/snaptoken/kilo/03.rawInputAndOutput.html
+ * whose cose comes from kilo: http://antirez.com/news/108
+ * */
 int read_char(){
     char c;
     ssize_t err;
@@ -200,12 +215,35 @@ int read_char(){
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return ESC;
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return ESC;
 
-        if (seq[0] == '['){
-            switch (seq[1]) {
-                case 'A': return ARROW_UP;
-                case 'B': return ARROW_DOWN;
-                case 'C': return ARROW_RIGHT;
-                case 'D': return ARROW_LEFT;
+        if (seq[0] == '[') {
+            if (seq[1] >= '0' && seq[1] <= '9') {
+                if (read(STDIN_FILENO, &seq[2], 1) != 1) return ESC;
+                if (seq[2] == '~') {
+                    switch (seq[2]) {
+                        case '1': return HOME_KEY;
+                        case '3': return DEL_KEY;
+                        case '4': return END_KEY;
+                        case '5': return PAGE_UP;
+                        case '6': return PAGE_DOWN;
+                        case '7': return HOME_KEY;
+                        case '8': return END_KEY;
+                    }
+                }
+            } else {
+                switch (seq[1]) {
+                    case 'A': return ARROW_UP;
+                    case 'B': return ARROW_DOWN;
+                    case 'C': return ARROW_RIGHT;
+                    case 'D': return ARROW_LEFT;
+                    case 'H': return HOME_KEY;
+                    case 'F': return END_KEY;
+                }
+            }
+        }
+        else if (seq[0] == 'O') {
+            switch (seq[1]){
+                case 'H': return HOME_KEY;
+                case 'F': return END_KEY;
             }
         }
 
@@ -220,18 +258,33 @@ int read_char(){
 void process_keypress(){
 
     int c = read_char();
+    int err;
 
     switch (c) {
+
+        case '\r':
+            TextBufferNewLine(editor_state.current_buffer);
 
         case ARROW_UP: up_arrow(); break;
         case ARROW_DOWN: down_arrow(); break;
         case ARROW_LEFT: left_arrow(); break;
         case ARROW_RIGHT: right_arrow(); break;
 
+        // We wont use these keys
+        case PAGE_UP:
+        case PAGE_DOWN:
+        case HOME_KEY:
+        case END_KEY:
+        case DEL_KEY:
+            break;
+
+        case CTRL_KEY('l'):
+        case '\x1b':
+            break;
 
         // Save buffer state to file
         case CTRL_KEY('s'):
-            flush_buffer_to_file();
+            err = flush_buffer_to_file();
             break;
 
         case CTRL_KEY('q'):
@@ -243,6 +296,11 @@ void process_keypress(){
             cleanup();
             exit(0);
             break;
+
+        // Backspace
+        case BACKSPACE:
+        case CTRL_KEY('h'):
+            TextBufferBackspace(editor_state.current_buffer);
     }
 }
 
@@ -437,7 +495,6 @@ void render_screen() {
 void draw_screen(){
 
     editor_state.screen.buf_pos = 0; // reset the screen
-    int screen_str_pos = 0;  // position on the screen
 
     // Disable cursor
     screen_append("\x1b[?25l", 6);
@@ -452,10 +509,16 @@ void draw_screen(){
     draw_status_line(editor_state.screen_cols);
 
     // Move cursor to the cursor position
+    int row = editor_state.current_buffer->cursorRow;
+    int col = editor_state.current_buffer->cursorCol;
+
+    // Calculate the col position in relation to the line
+    col = col < editor_state.current_buffer->lines[row]->str_len ? col : editor_state.current_buffer->lines[row]->str_len;
+
     char buf[32];
     sprintf(buf, "\x1b[%d;%dH",
-            (editor_state.current_buffer->cursorRow - editor_state.vrow_start) + 1,
-            editor_state.current_buffer->cursorCol + 1);
+            (row - editor_state.vrow_start) + 1,
+            col + 1);
 
     screen_append(buf, strlen(buf));
 
