@@ -92,7 +92,7 @@ int TextBufferInsert(TextBuffer* instance, char ch);
 /*
  * Backspace deletes the character that appears before the cursor location. Similar to hitting the backspace button.
  * */
-void TextBufferBackspace(TextBuffer* instance);
+int TextBufferBackspace(TextBuffer* instance);
 
 
 /*

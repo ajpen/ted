@@ -104,14 +104,29 @@ int TextBufferInsert(TextBuffer* instance, char ch){
         return err;
     }
 
-    instance->cursorCol++;
+    instance->cursorCol = instance->lines[instance->cursorRow]->gap_loc;
     return 0;
 }
 
 
-void TextBufferBackspace(TextBuffer* instance){
+int TextBufferBackspace(TextBuffer* instance){
+    int err;
+
+    // If the cursor column changed, we need to move the gap buffer before deleting
+    if (instance->cursorColMoved) {
+        err = GapBufferMoveGap(instance->lines[instance->cursorRow], instance->cursorCol);
+
+        if (err != 0){
+            return err;
+        }
+
+        instance->cursorColMoved = 0;
+    }
+
     GapBufferBackSpace(instance->lines[instance->cursorRow]);
-    instance->cursorCol--;
+    instance->cursorCol = instance->lines[instance->cursorRow]->gap_loc;
+
+    return 0;
 }
 
 
