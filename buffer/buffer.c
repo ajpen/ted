@@ -73,8 +73,15 @@ void TextBufferMoveCursor(TextBuffer* instance, int row, int col){
 
     instance->cursorRow = row;
 
-    // Gap buffer will manage the cursor position (whether out of bounds)
-    // We do however, need to indicate that the column moved so the gap can be moved before inserting
+    if (col > instance->lines[row]->str_len-1){
+        col = instance->lines[row]->str_len-1;
+    }
+
+    if (col < 0){
+        col = 0;
+    }
+
+    // We need to indicate that the column moved so the gap can be moved before inserting
     if (instance->cursorCol != col){
         instance->cursorColMoved = 1;
     }
