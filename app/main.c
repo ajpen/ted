@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <libgen.h>
 #include <string.h>
 #include <stdio.h>
@@ -10,8 +9,6 @@
 #include "../buffer/buffer.h"
 
 /*** definitions ***/
-#define DEFAULT_LINE_SIZE 200
-#define DEFAULT_NUM_LINES 1000
 
 // CTRL_KEY macro returns the value of the k as a control key combination; basically CTRL + k
 #define CTRL_KEY(k) ((k) & 0x1f)
@@ -101,8 +98,6 @@ void up_arrow();
 void down_arrow();
 void right_arrow();
 void left_arrow();
-void page_up();
-void page_down();
 
 /* Input */
 int read_char();
@@ -179,20 +174,6 @@ void right_arrow() {
 }
 
 
-void page_up() {
-    TextBufferMoveCursor(editor_state.current_buffer, 0, editor_state.current_buffer->cursorCol);
-    editor_state.vrow_start = 0;
-}
-
-void page_down() {
-    TextBufferMoveCursor(
-            editor_state.current_buffer,
-            editor_state.current_buffer->last_line_loc,
-            editor_state.current_buffer->cursorCol);
-
-    editor_state.vrow_start = editor_state.current_buffer->cursorRow - (editor_state.screen_rows - 2);
-}
-
 /* Input */
 /*
  * read_char is heavily motivated by this tutorial: https://viewsourcecode.org/snaptoken/kilo/03.rawInputAndOutput.html
@@ -264,6 +245,7 @@ void process_keypress(){
 
         case '\r':
             TextBufferNewLine(editor_state.current_buffer);
+            break;
 
         case ARROW_UP: up_arrow(); break;
         case ARROW_DOWN: down_arrow(); break;
@@ -379,7 +361,6 @@ void panic(const char* message){
 
 void set_window_size() {
     struct winsize ws;
-    int rows, cols;
 
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
         // panic("Failed to get window size");
@@ -595,7 +576,10 @@ void draw_status_line(int line_size) {
     screen_append(RESET_STYLE_COLOUR, INVERT_COLOUR_SIZE);
 }
 
-
+/*
+ * TODO: I can return the number of lines written (lines in the buffer, not screen lines), then use that to calculate
+ * the cursor position on the screen.
+ * */
 void draw_editor_window(){
 
     char* line = NULL;

@@ -170,6 +170,7 @@ int TextBufferNewLine(TextBuffer* instance){
         GapBuffer** new_lines = realloc(instance->lines, sizeof(GapBuffer*) * (instance->lines_capacity * 2));
 
         if (new_lines == NULL){
+            // TODO: Panic here. recovering at the moment is hard
             return MEM_ERROR;
         }
 
