@@ -40,6 +40,8 @@ struct VirtualScreen {
     char* buffer;           // Internal representation of the screen
     int buf_pos;
     int len;
+    int cursor_row;
+    int cursor_col;
 };
 
 // Main state & buffers
@@ -82,6 +84,7 @@ void render_screen();
 void draw_screen();
 void draw_status_line(int line_size);
 void draw_editor_window();
+void handle_cursor_line_wrap();
 
 /*
  * draws ' %d ' with inverted colours to the current position of the screen where %d is the number or blank spaces.
@@ -477,6 +480,10 @@ void draw_screen(){
 
     editor_state.screen.buf_pos = 0; // reset the screen
 
+    // Reset cursor position
+    editor_state.screen.cursor_row = editor_state.current_buffer->cursorRow;
+    editor_state.screen.cursor_col = editor_state.current_buffer->cursorCol;
+
     // Disable cursor
     screen_append("\x1b[?25l", 6);
 
@@ -490,11 +497,9 @@ void draw_screen(){
     draw_status_line(editor_state.screen_cols);
 
     // Move cursor to the cursor position
-    int row = editor_state.current_buffer->cursorRow;
-    int col = editor_state.current_buffer->cursorCol;
-
-    // Calculate the col position in relation to the line
-    col = col < editor_state.current_buffer->lines[row]->str_len ? col : editor_state.current_buffer->lines[row]->str_len;
+    handle_cursor_line_wrap();
+    int row = editor_state.screen.cursor_row;
+    int col = editor_state.screen.cursor_col;
 
     char buf[32];
     sprintf(buf, "\x1b[%d;%dH",
@@ -576,20 +581,27 @@ void draw_status_line(int line_size) {
     screen_append(RESET_STYLE_COLOUR, INVERT_COLOUR_SIZE);
 }
 
-/*
- * TODO: I can return the number of lines written (lines in the buffer, not screen lines), then use that to calculate
- * the cursor position on the screen.
- * */
-void draw_editor_window(){
 
+/*
+ * Determines whether the logical cursor position lies on a "wrapped" portion of a line. If so, calculates and sets its
+ * virtual position
+ * */
+void handle_cursor_line_wrap(){
+    if (editor_state.current_buffer->cursorCol >= editor_state.screen_cols){
+        editor_state.screen.cursor_row += editor_state.current_buffer->cursorCol / editor_state.screen_cols;
+        editor_state.screen.cursor_col = (editor_state.current_buffer->cursorCol % editor_state.screen_cols);
+    }
+}
+
+void draw_editor_window(){
     char* line = NULL;
     int cur_line = editor_state.vrow_start;
     int lines_written = 0;
-    int remaining_line_space;
+    int screen_cols;
 
     while (cur_line <= editor_state.current_buffer->last_line_loc && lines_written < editor_state.screen_rows - 1){
 
-        remaining_line_space = editor_state.screen_cols;
+        screen_cols = editor_state.screen_cols;
 
         // Let's draw cur_line using as many screen rows as needed.
         line = TextBufferGetLine(editor_state.current_buffer, cur_line);
@@ -599,21 +611,25 @@ void draw_editor_window(){
         }
 
         // Draw the line
-        if (strlen(line) > remaining_line_space) {
+        if (strlen(line) > screen_cols) {
             // Here we need multiple screen rows to draw 'line' we'll use whatever is available to draw it
 
             int i=0;
             int len_to_write;
 
             do {
-
                 // if remaining line can fit in screen space, write the remaining line, else fill the remaining space
-                len_to_write = remaining_line_space < strlen(&line[i]) ? remaining_line_space : strlen(&line[i]);
+                len_to_write = screen_cols < strlen(&line[i]) ? screen_cols : strlen(&line[i]);
 
                 screen_append(&line[i], len_to_write);
                 screen_append("\r\n", 2); screen_append("\x1b[K", 3);
                 i += len_to_write;
                 lines_written++;
+
+                // If the cursor is below this line, shift its position down
+                if (cur_line < editor_state.current_buffer->cursorRow && i < strlen(line) - 1){
+                    editor_state.screen.cursor_row++;
+                }
 
                 // Screen is full, lets stop
                 if (lines_written == editor_state.screen_rows - 2){
