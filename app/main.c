@@ -7,6 +7,7 @@
 #include <sys/ioctl.h>
 #include <sys/errno.h>
 #include "../buffer/buffer.h"
+#include "visual.c"
 
 /*** definitions ***/
 
@@ -35,14 +36,6 @@ enum specialKeys {
 };
 
 /* structs */
-
-struct VirtualScreen {
-    char* buffer;           // Internal representation of the screen
-    int buf_pos;
-    int len;
-    int cursor_row;
-    int cursor_col;
-};
 
 // Main state & buffers
 struct EditorState {
@@ -255,7 +248,7 @@ void process_keypress(){
         case ARROW_LEFT: left_arrow(); break;
         case ARROW_RIGHT: right_arrow(); break;
 
-        // We wont use these keys
+        // We wont use these keys for now
         case PAGE_UP:
         case PAGE_DOWN:
         case HOME_KEY:
@@ -481,8 +474,8 @@ void draw_screen(){
     editor_state.screen.buf_pos = 0; // reset the screen
 
     // Reset cursor position
-    editor_state.screen.cursor_row = editor_state.current_buffer->cursorRow;
-    editor_state.screen.cursor_col = editor_state.current_buffer->cursorCol;
+    editor_state.screen.cursor.row = editor_state.current_buffer->cursorRow;
+    editor_state.screen.cursor.col = editor_state.current_buffer->cursorCol;
 
     // Disable cursor
     screen_append("\x1b[?25l", 6);
@@ -498,8 +491,8 @@ void draw_screen(){
 
     // Move cursor to the cursor position
     handle_cursor_line_wrap();
-    int row = editor_state.screen.cursor_row;
-    int col = editor_state.screen.cursor_col;
+    int row = editor_state.screen.cursor.row;
+    int col = editor_state.screen.cursor.col;
 
     char buf[32];
     sprintf(buf, "\x1b[%d;%dH",
@@ -588,16 +581,54 @@ void draw_status_line(int line_size) {
  * */
 void handle_cursor_line_wrap(){
     if (editor_state.current_buffer->cursorCol >= editor_state.screen_cols){
-        editor_state.screen.cursor_row += editor_state.current_buffer->cursorCol / editor_state.screen_cols;
-        editor_state.screen.cursor_col = (editor_state.current_buffer->cursorCol % editor_state.screen_cols);
+        editor_state.screen.cursor.row += editor_state.current_buffer->cursorCol / editor_state.screen_cols;
+        editor_state.screen.cursor.col = (editor_state.current_buffer->cursorCol % editor_state.screen_cols);
     }
 }
 
+/*
+ * TODO: I'll keep track of the cursor position on the screen (max col/row is the screen size)
+ * Then, I'll use an offset variable to know which line to start printing from. Moving the cursor down when its already
+ * at the bottom will only increment the offset. vice versa with moving up.
+ * TODO: Figure out how to know where the cursor should be,
+ * TODO: Figure out how to know which line the cursor is on (so we know what to modify and where)
+ * TODO: Figure out wrapping the column
+ * */
 void draw_editor_window(){
+
     char* line = NULL;
     int cur_line = editor_state.vrow_start;
+    int cursor_row = editor_state.current_buffer->cursorRow;
+    int total_virtual_rows = 0;
+    int line_len = 0;
     int lines_written = 0;
     int screen_cols;
+
+    // Lets calculate the virtual rows required to print from the offset to the cursor location
+    for (int i=cur_line; i<=cursor_row; i++){
+        line_len = editor_state.current_buffer->lines[i]->str_len;
+
+        if (line_len > editor_state.screen_cols){
+            total_virtual_rows += editor_state.current_buffer->lines[i]->str_len / editor_state.screen_cols;
+        } else {
+            total_virtual_rows++;
+        }
+    }
+
+    // We'll shift the line offset until the cursor line is on the screen
+    while(total_virtual_rows > editor_state.screen_rows - 1){
+
+        // We'll shift the offset forward by one line to make space
+        line_len = editor_state.current_buffer->lines[cur_line]->str_len;
+        if (line_len > editor_state.screen_cols) {
+            total_virtual_rows -= editor_state.current_buffer->lines[cur_line]->str_len / editor_state.screen_cols;
+        } else {
+            total_virtual_rows--;
+        }
+        cur_line++;
+        editor_state.vrow_start = cur_line;
+    }
+
 
     while (cur_line <= editor_state.current_buffer->last_line_loc && lines_written < editor_state.screen_rows - 1){
 
@@ -628,7 +659,7 @@ void draw_editor_window(){
 
                 // If the cursor is below this line, shift its position down
                 if (cur_line < editor_state.current_buffer->cursorRow && i < strlen(line) - 1){
-                    editor_state.screen.cursor_row++;
+                    editor_state.screen.cursor.row++;
                 }
 
                 // Screen is full, lets stop
