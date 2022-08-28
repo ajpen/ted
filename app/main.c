@@ -14,12 +14,6 @@
 // CTRL_KEY macro returns the value of the k as a control key combination; basically CTRL + k
 #define CTRL_KEY(k) ((k) & 0x1f)
 
-// ANSI Escape Codes
-#define ESC '\x1b'
-#define INVERT_COLOUR "\x1b[7m"
-#define INVERT_COLOUR_SIZE 4
-#define RESET_STYLE_COLOUR "\x1b[0m"
-
 
 /* Constants */
 enum specialKeys {
@@ -474,8 +468,8 @@ void draw_screen(){
     editor_state.screen.buf_pos = 0; // reset the screen
 
     // Reset cursor position
-    editor_state.screen.cursor.row = editor_state.current_buffer->cursorRow;
-    editor_state.screen.cursor.col = editor_state.current_buffer->cursorCol;
+    editor_state.screen.cursor.x = editor_state.current_buffer->cursorRow;
+    editor_state.screen.cursor.y = editor_state.current_buffer->cursorCol;
 
     // Disable cursor
     screen_append("\x1b[?25l", 6);
@@ -491,8 +485,8 @@ void draw_screen(){
 
     // Move cursor to the cursor position
     handle_cursor_line_wrap();
-    int row = editor_state.screen.cursor.row;
-    int col = editor_state.screen.cursor.col;
+    int row = editor_state.screen.cursor.x;
+    int col = editor_state.screen.cursor.y;
 
     char buf[32];
     sprintf(buf, "\x1b[%d;%dH",
@@ -581,8 +575,8 @@ void draw_status_line(int line_size) {
  * */
 void handle_cursor_line_wrap(){
     if (editor_state.current_buffer->cursorCol >= editor_state.screen_cols){
-        editor_state.screen.cursor.row += editor_state.current_buffer->cursorCol / editor_state.screen_cols;
-        editor_state.screen.cursor.col = (editor_state.current_buffer->cursorCol % editor_state.screen_cols);
+        editor_state.screen.cursor.x += editor_state.current_buffer->cursorCol / editor_state.screen_cols;
+        editor_state.screen.cursor.y = (editor_state.current_buffer->cursorCol % editor_state.screen_cols);
     }
 }
 
@@ -659,7 +653,7 @@ void draw_editor_window(){
 
                 // If the cursor is below this line, shift its position down
                 if (cur_line < editor_state.current_buffer->cursorRow && i < strlen(line) - 1){
-                    editor_state.screen.cursor.row++;
+                    editor_state.screen.cursor.x++;
                 }
 
                 // Screen is full, lets stop
