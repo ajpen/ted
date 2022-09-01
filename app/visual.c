@@ -8,6 +8,11 @@
 #define INVERT_COLOUR_SIZE 4
 #define RESET_STYLE_COLOUR "\x1b[0m"
 
+// TODO: Use macros to set up debugging. If macro is set, functions calls are recorded along with the state before and after, all dumped to a file.
+// So i can see whats happening after each call.
+
+void screen_append(const char *str, int size);
+
 
 typedef struct Cursor {
     int x;
@@ -97,3 +102,49 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
 }
 
 
+void draw_editor_window(TextBuffer* buffer, struct VirtualScreen* screen){
+
+    int cur_line = buffer->cursorRow;
+    char* line = NULL;
+    int lines_rendered = 0;
+
+    while (cur_line <= buffer->last_line_loc){
+
+        // Let's draw cur_line using as many screen rows as needed.
+        line = TextBufferGetLine(buffer, cur_line);
+
+        if (line == NULL){
+            panic("draw editor cant get text of current line in buffer");
+        }
+
+        lines_rendered += required_screen_rows(buffer->lines[cur_line]->str_len, screen->width);
+
+        if (lines_rendered > screen->height - 1){
+            break;
+        }
+
+        screen_append(line, buffer->lines[cur_line]->str_len);
+        screen_append("\r\n", 2);
+
+        cur_line++;
+    }
+}
+
+
+void set_virtual_cursor_position(TextBuffer* buffer, struct VirtualScreen* screen){
+
+    int current_line = screen->render_start_line;
+    int virtual_cursor_row = 1;
+
+    while (current_line != buffer->cursorRow){
+        virtual_cursor_row += required_screen_rows(buffer->lines[current_line]->str_len, screen->width);
+        current_line++;
+    }
+
+    // if the cursor line wraps, we need to shift the cursor down the number of times it wraps
+    virtual_cursor_row += buffer->cursorCol / screen->width;
+
+    // now lets set the screen cursor x and y position
+    screen->cursor.x = virtual_cursor_row;
+    screen->cursor.y = (buffer->cursorCol + 1) % screen->width;
+}
