@@ -85,7 +85,7 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
                 break;
             }
 
-            cumul_req_rows += required_screen_rows(buffer->lines[cur_line]->str_len, screen->width);
+            cumul_req_rows += cur_line_required_rows;
             cur_line++;
         }
 
