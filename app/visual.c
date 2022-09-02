@@ -32,6 +32,7 @@ struct VirtualScreen {
 
 /*
  * Returns the number of screen rows required to print a line of the given length.
+ * line_length must always be greater than zero
  * */
 int required_screen_rows(int line_length, int screen_width){
 
@@ -52,7 +53,8 @@ int required_screen_rows(int line_length, int screen_width){
  * the cursor is back in view.
  * */
 void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
-    Cursor cursor = {buffer->cursorRow, buffer->cursorCol};
+
+    Cursor buffer_cursor = {buffer->cursorRow, buffer->cursorCol};
 
     int cumul_req_rows = 0;
     int cur_line_required_rows;
@@ -61,16 +63,23 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
 
     // The entire render_start_line is guaranteed to be rendered (except the corner case where
     // its larger than the screen dimensions; a case we'll ignore for now)
-    if (cursor.x < screen->render_start_line){
-        screen->render_start_line = cursor.x;
+    if (buffer_cursor.x < screen->render_start_line){
+        screen->render_start_line = buffer_cursor.x;
     }
 
     // We'll calculate the current range in the buffer that is visible
     // TODO: This can probably be cached
+    // TODO: BUG: the issue with the cursor going out of view is here. The calculation seems to be wrong. I may need to dump some values
     else {
         while (cur_line <= buffer->last_line_loc) {
 
             cur_line_required_rows = required_screen_rows(buffer->lines[cur_line]->str_len, screen->width);
+
+            // Long as the line exists, we must count a row for it TODO: Find a better way of dealing with this
+            if (cur_line_required_rows == 0){
+                cur_line_required_rows = 1;
+            }
+
 
             if ((cur_line_required_rows + cumul_req_rows) > screen->height - 1) {
                 break;
@@ -81,12 +90,12 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
         }
 
         // If the cursor is not in view, shift the text displayed until it is
-        if (cursor.x > cur_line) {
+        if (buffer_cursor.x > cur_line) {
 
             int rows_required = 0;
 
             // Calculate required space
-            while(cur_line <= cursor.x){
+            while(cur_line <= buffer_cursor.x){
                 rows_required += required_screen_rows(buffer->lines[cur_line]->str_len, screen->width);
                 cur_line++;
             }
@@ -103,12 +112,14 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
 
 
 void draw_editor_window(TextBuffer* buffer, struct VirtualScreen* screen){
-
-    int cur_line = buffer->cursorRow;
     char* line = NULL;
-    int lines_rendered = 0;
+    int cur_line = screen->render_start_line;
+    int lines_written = 0;
+    int screen_cols;
 
-    while (cur_line <= buffer->last_line_loc){
+    while (cur_line <= buffer->last_line_loc && lines_written < screen->height - 1){
+
+        screen_cols = screen->width;
 
         // Let's draw cur_line using as many screen rows as needed.
         line = TextBufferGetLine(buffer, cur_line);
@@ -117,16 +128,42 @@ void draw_editor_window(TextBuffer* buffer, struct VirtualScreen* screen){
             panic("draw editor cant get text of current line in buffer");
         }
 
-        lines_rendered += required_screen_rows(buffer->lines[cur_line]->str_len, screen->width);
+        // Draw the line
+        if (strlen(line) > screen_cols) {
+            // Here we need multiple screen rows to draw 'line' we'll use whatever is available to draw it
 
-        if (lines_rendered > screen->height - 1){
-            break;
+            int i=0;
+            int len_to_write;
+
+            do {
+                // if remaining line can fit in screen space, write the remaining line, else fill the remaining space
+                len_to_write = screen_cols < strlen(&line[i]) ? screen_cols : strlen(&line[i]);
+
+                screen_append(&line[i], len_to_write);
+                screen_append("\r\n", 2); screen_append("\x1b[K", 3);
+                i += len_to_write;
+                lines_written++;
+
+                // Screen is full, lets stop
+                if (lines_written == screen->height - 2){
+                    break;
+                }
+
+            } while (i < strlen(line) - 1);
+
+        } else {
+            screen_append(line, strlen(line));
+            screen_append("\r\n", 2);
+            lines_written++;
         }
 
-        screen_append(line, buffer->lines[cur_line]->str_len);
-        screen_append("\r\n", 2);
-
+        free(line);
         cur_line++;
+    }
+
+    // If there's remaining space, fill with blanks
+    for (; lines_written < screen->height-2; lines_written++){
+        screen_append("\r\n", 2);
     }
 }
 
@@ -135,9 +172,14 @@ void set_virtual_cursor_position(TextBuffer* buffer, struct VirtualScreen* scree
 
     int current_line = screen->render_start_line;
     int virtual_cursor_row = 1;
+    int required_rows = 0;
 
     while (current_line != buffer->cursorRow){
-        virtual_cursor_row += required_screen_rows(buffer->lines[current_line]->str_len, screen->width);
+        required_rows = required_screen_rows(buffer->lines[current_line]->str_len, screen->width);
+        if (required_rows == 0){
+            required_rows = 1;
+        }
+        virtual_cursor_row += required_rows;
         current_line++;
     }
 

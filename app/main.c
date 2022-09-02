@@ -10,7 +10,7 @@
 
 // TODO: I need to reorganize the code. Might make sense to put all the prototypes in a header file, then include that before including the source modules.
 void panic(const char* message);
-void screen_debug();
+void debug();
 
 #include "visual.c"
 
@@ -104,11 +104,14 @@ int main(int argc, char* argv[]) {
 
 /******************************* Implementations *********************************/
 
-void screen_debug(){
+void debug(){
     struct VirtualScreen s = editor_state.screen;
+    TextBuffer* t = editor_state.current_buffer;
+
     fprintf(stderr,
-            "width: %d\theight: %d\ncursor.x: %d\tcursor.y: %d\nrender start: %d\n",
-            s.width, s.height, s.cursor.x, s.cursor.y, s.render_start_line);
+            "Dimensions: %d x %d | cursor.x: %d | cursor.y: %d | render start: %d | bcursor.x: %d | bcursor.y: %d | cur len: %d\n",
+            s.height, s.width, s.cursor.x, s.cursor.y, s.render_start_line,
+            t->cursorRow, t->cursorCol, t->lines[t->cursorRow]->str_len);
 }
 
 
@@ -465,11 +468,9 @@ void draw_screen(){
     // Move cursor to the top
     screen_append("\x1b[H", 3);
 
-    screen_debug();
     move_cursor_in_view(editor_state.current_buffer, &editor_state.screen);
     draw_editor_window(editor_state.current_buffer, &editor_state.screen);
     draw_status_line(editor_state.screen.width);
-    screen_debug();
 
     set_virtual_cursor_position(editor_state.current_buffer, &editor_state.screen);
 
