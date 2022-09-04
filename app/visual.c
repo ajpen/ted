@@ -32,14 +32,18 @@ struct VirtualScreen {
 
 /*
  * Returns the number of screen rows required to print a line of the given length.
- * line_length must always be greater than zero
+ * undefined for line_length < 0
  * */
-int required_screen_rows(int line_length, int screen_width){
+int required_screen_rows(int line_length, int screen_width) {
 
     // lines required is the number of times the screen width is filled len/width + 1 if there's a remainder
-    return (line_length / screen_width) + ((line_length % screen_width) > 0);
-}
+    if (line_length == 0) {
+        return 1;
 
+    } else {
+        return (line_length / screen_width) + ((line_length % screen_width) > 0);
+    }
+}
 
 /*
  * TODO: I can retroactively calculate this in the logic in the function that moves the cursor.
@@ -68,6 +72,7 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
     }
 
     // We'll calculate the current range in the buffer that is visible
+    // TODO: Add a debug binary, then load main.c into a textbuf and add debug statements here.
     // TODO: This can probably be cached
     // TODO: BUG: the issue with the cursor going out of view is here. The calculation seems to be wrong. I may need to dump some values
     else {
@@ -75,18 +80,15 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
 
             cur_line_required_rows = required_screen_rows(buffer->lines[cur_line]->str_len, screen->width);
 
-            // Long as the line exists, we must count a row for it TODO: Find a better way of dealing with this
-            if (cur_line_required_rows == 0){
-                cur_line_required_rows = 1;
-            }
-
-
             if ((cur_line_required_rows + cumul_req_rows) > screen->height - 1) {
+                cur_line--;
                 break;
             }
 
             cumul_req_rows += cur_line_required_rows;
             cur_line++;
+
+            fprintf(stderr, "cur_line: %d | cum_req_rows: %d \n", cur_line, cumul_req_rows);
         }
 
         // If the cursor is not in view, shift the text displayed until it is
@@ -105,6 +107,7 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
             while (rows_required > 0){
                 rows_required -= required_screen_rows(buffer->lines[screen->render_start_line]->str_len, screen->width);
                 screen->render_start_line++;
+
             }
         }
     }
@@ -172,17 +175,16 @@ void set_virtual_cursor_position(TextBuffer* buffer, struct VirtualScreen* scree
 
     int current_line = screen->render_start_line;
     int virtual_cursor_row = 1;
-    int required_rows = 0;
+    int required_rows;
 
     while (current_line != buffer->cursorRow){
         required_rows = required_screen_rows(buffer->lines[current_line]->str_len, screen->width);
-        if (required_rows == 0){
-            required_rows = 1;
-        }
+
         virtual_cursor_row += required_rows;
         current_line++;
     }
 
+    // TODO: Scrolling and line wrap has an issue.
     // if the cursor line wraps, we need to shift the cursor down the number of times it wraps
     virtual_cursor_row += buffer->cursorCol / screen->width;
 

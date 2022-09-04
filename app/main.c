@@ -487,6 +487,7 @@ void draw_screen(){
 
     // End the string (so we can get strlen)
     screen_append("\0", 1);
+    debug();
 }
 
 
