@@ -73,8 +73,8 @@ void TextBufferMoveCursor(TextBuffer* instance, int row, int col){
 
     instance->cursorRow = row;
 
-    if (col > instance->lines[row]->str_len-1){
-        col = instance->lines[row]->str_len-1;
+    if (col > instance->lines[row]->str_len){
+        col = instance->lines[row]->str_len;
     }
 
     if (col < 0){
