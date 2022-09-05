@@ -8,7 +8,6 @@
 #define INVERT_COLOUR_SIZE 4
 #define RESET_STYLE_COLOUR "\x1b[0m"
 
-// TODO: Use macros to set up debugging. If macro is set, functions calls are recorded along with the state before and after, all dumped to a file.
 // So i can see whats happening after each call.
 
 void screen_append(const char *str, int size);
@@ -72,9 +71,6 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
     }
 
     // We'll calculate the current range in the buffer that is visible
-    // TODO: Add a debug binary, then load main.c into a textbuf and add debug statements here.
-    // TODO: This can probably be cached
-    // TODO: BUG: the issue with the cursor going out of view is here. The calculation seems to be wrong. I may need to dump some values
     else {
         while (cur_line <= buffer->last_line_loc) {
 
@@ -87,8 +83,6 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
 
             cumul_req_rows += cur_line_required_rows;
             cur_line++;
-
-            fprintf(stderr, "cur_line: %d | cum_req_rows: %d \n", cur_line, cumul_req_rows);
         }
 
         // If the cursor is not in view, shift the text displayed until it is
@@ -184,11 +178,10 @@ void set_virtual_cursor_position(TextBuffer* buffer, struct VirtualScreen* scree
         current_line++;
     }
 
-    // TODO: Scrolling and line wrap has an issue.
     // if the cursor line wraps, we need to shift the cursor down the number of times it wraps
-    virtual_cursor_row += buffer->cursorCol / screen->width;
+    virtual_cursor_row += (buffer->cursorCol) / screen->width;
 
     // now lets set the screen cursor x and y position
     screen->cursor.x = virtual_cursor_row;
-    screen->cursor.y = (buffer->cursorCol + 1) % screen->width;
+    screen->cursor.y = (buffer->cursorCol % screen->width) + 1;
 }
