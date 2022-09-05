@@ -10,7 +10,6 @@
 
 // TODO: I need to reorganize the code. Might make sense to put all the prototypes in a header file, then include that before including the source modules.
 void panic(const char* message);
-void debug();
 
 #include "visual.c"
 
@@ -73,8 +72,6 @@ void draw_screen();
 void draw_status_line(int line_size);
 
 
-
-
 /* Cursor Movement */
 void up_arrow();
 void down_arrow();
@@ -104,15 +101,7 @@ int main(int argc, char* argv[]) {
 
 /******************************* Implementations *********************************/
 
-void debug(){
-    struct VirtualScreen s = editor_state.screen;
-    TextBuffer* t = editor_state.current_buffer;
 
-    fprintf(stderr,
-            "Dimensions: %d x %d | cursor.x: %d | cursor.y: %d | render start: %d | bcursor.x: %d | bcursor.y: %d | cur len: %d\n",
-            s.height, s.width, s.cursor.x, s.cursor.y, s.render_start_line,
-            t->cursorRow, t->cursorCol, t->lines[t->cursorRow]->str_len);
-}
 
 
 void up_arrow() {
@@ -487,7 +476,6 @@ void draw_screen(){
 
     // End the string (so we can get strlen)
     screen_append("\0", 1);
-    debug();
 }
 
 

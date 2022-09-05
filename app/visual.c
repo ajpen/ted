@@ -8,7 +8,6 @@
 #define INVERT_COLOUR_SIZE 4
 #define RESET_STYLE_COLOUR "\x1b[0m"
 
-// So i can see whats happening after each call.
 
 void screen_append(const char *str, int size);
 
