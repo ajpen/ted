@@ -2,11 +2,7 @@
 // Created by Anfernee Jervis on 8/27/22.
 //
 
-// ANSI Escape Codes
-#define ESC '\x1b'
-#define INVERT_COLOUR "\x1b[7m"
-#define INVERT_COLOUR_SIZE 4
-#define RESET_STYLE_COLOUR "\x1b[0m"
+
 
 
 void screen_append(const char *str, int size);

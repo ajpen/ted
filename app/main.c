@@ -7,16 +7,9 @@
 #include <sys/ioctl.h>
 #include <sys/errno.h>
 #include "../buffer/buffer.h"
-
-// TODO: I need to reorganize the code. Might make sense to put all the prototypes in a header file, then include that before including the source modules.
-void panic(const char* message);
+#include "defs.h"
 
 #include "visual.c"
-
-/*** definitions ***/
-
-// CTRL_KEY macro returns the value of the k as a control key combination; basically CTRL + k
-#define CTRL_KEY(k) ((k) & 0x1f)
 
 
 /* Constants */
@@ -101,165 +94,10 @@ int main(int argc, char* argv[]) {
 
 /******************************* Implementations *********************************/
 
-
-
-
-void up_arrow() {
-
-    int col = editor_state.current_buffer->cursorCol;
-    int row = editor_state.current_buffer->cursorRow;
-
-    if (row > 0){
-        row--;
-
-        TextBufferMoveCursor(editor_state.current_buffer, row, col);
-    }
-
-    // ding the terminal if you figure out how to
-}
-
-void down_arrow() {
-
-    int col = editor_state.current_buffer->cursorCol;
-    int row = editor_state.current_buffer->cursorRow;
-
-    if (row < editor_state.current_buffer->last_line_loc){
-        row++;
-
-        TextBufferMoveCursor(editor_state.current_buffer, row, col);
-    }
-
-    // ding terminal
-}
-
-void left_arrow() {
-    int row = editor_state.current_buffer->cursorRow;
-    int col = editor_state.current_buffer->cursorCol - 1;
-    TextBufferMoveCursor(editor_state.current_buffer, row, col);
-}
-
-void right_arrow() {
-    int row = editor_state.current_buffer->cursorRow;
-    int col = editor_state.current_buffer->cursorCol + 1;
-    TextBufferMoveCursor(editor_state.current_buffer, row, col);
-}
-
-
-/* Input */
-/*
- * read_char is heavily motivated by this tutorial: https://viewsourcecode.org/snaptoken/kilo/03.rawInputAndOutput.html
- * whose cose comes from kilo: http://antirez.com/news/108
- * */
-int read_char(){
-    char c;
-    ssize_t err;
-
-    while((err = read(STDIN_FILENO, &c, 1)) != 1) {
-        if (err == EAGAIN) {
-            panic("read_char: read() returned EAGAIN");
-        }
-    }
-
-    // Handle escape sequences
-    if (c == ESC){
-        char seq[3];
-
-        if (read(STDIN_FILENO, &seq[0], 1) != 1) return ESC;
-        if (read(STDIN_FILENO, &seq[1], 1) != 1) return ESC;
-
-        if (seq[0] == '[') {
-            if (seq[1] >= '0' && seq[1] <= '9') {
-                if (read(STDIN_FILENO, &seq[2], 1) != 1) return ESC;
-                if (seq[2] == '~') {
-                    switch (seq[2]) {
-                        case '1': return HOME_KEY;
-                        case '3': return DEL_KEY;
-                        case '4': return END_KEY;
-                        case '5': return PAGE_UP;
-                        case '6': return PAGE_DOWN;
-                        case '7': return HOME_KEY;
-                        case '8': return END_KEY;
-                    }
-                }
-            } else {
-                switch (seq[1]) {
-                    case 'A': return ARROW_UP;
-                    case 'B': return ARROW_DOWN;
-                    case 'C': return ARROW_RIGHT;
-                    case 'D': return ARROW_LEFT;
-                    case 'H': return HOME_KEY;
-                    case 'F': return END_KEY;
-                }
-            }
-        }
-        else if (seq[0] == 'O') {
-            switch (seq[1]){
-                case 'H': return HOME_KEY;
-                case 'F': return END_KEY;
-            }
-        }
-
-        return ESC;
-
-    } else {
-        return c;
-    }
-}
-
-
-void process_keypress(){
-
-    int c = read_char();
-    int err;
-
-    switch (c) {
-
-        case '\r':
-            TextBufferNewLine(editor_state.current_buffer);
-            break;
-
-        case ARROW_UP: up_arrow(); break;
-        case ARROW_DOWN: down_arrow(); break;
-        case ARROW_LEFT: left_arrow(); break;
-        case ARROW_RIGHT: right_arrow(); break;
-
-        // We wont use these keys for now
-        case PAGE_UP:
-        case PAGE_DOWN:
-        case HOME_KEY:
-        case END_KEY:
-        case DEL_KEY:
-            break;
-
-        case CTRL_KEY('l'):
-        case '\x1b':
-            break;
-
-        // Save buffer state to file
-        case CTRL_KEY('s'):
-            err = flush_buffer_to_file();
-            break;
-
-        case CTRL_KEY('q'):
-
-            // Clear screen
-            write(STDOUT_FILENO, "\x1b[2J", 4);
-            write(STDOUT_FILENO, "\x1b[H", 3);
-
-            cleanup();
-            exit(0);
-            break;
-
-        // Backspace
-        case BACKSPACE:
-        case CTRL_KEY('h'):
-            TextBufferBackspace(editor_state.current_buffer);
-    }
-}
-
 void initialize(int argc, char* argv[]){
 
     // Get file path information
+    // TODO: Dont attempt to load file if no path is given.
     if (argc >= 2){
         editor_state.file_path = argv[1];
     }
@@ -313,6 +151,11 @@ int load_file_and_initialize_buffer() {
 }
 
 void cleanup(){
+
+    // Clear screen
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
+
     // free memory for screen
     free(editor_state.screen.buffer);
 
@@ -337,7 +180,7 @@ void set_window_size() {
         // panic("Failed to get window size");
 
         // manually get window size
-        if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12 != 12)) {
+        if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) {
             panic("Failed to get window size");
         }
 
@@ -432,6 +275,15 @@ void enableRawMode(){
 
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) {
         panic("tcsetattr");
+    }
+}
+
+
+void screen_append(const char *str, int size) {
+
+    if (editor_state.screen.buffer != NULL && (editor_state.screen.len - editor_state.screen.buf_pos) > size) {
+        memcpy(editor_state.screen.buffer + editor_state.screen.buf_pos, str, size);
+        editor_state.screen.buf_pos += size;
     }
 }
 
@@ -545,13 +397,6 @@ void draw_status_line(int line_size) {
 }
 
 
-void screen_append(const char *str, int size) {
-
-    if (editor_state.screen.buffer != NULL && (editor_state.screen.len - editor_state.screen.buf_pos) > size) {
-        memcpy(editor_state.screen.buffer + editor_state.screen.buf_pos, str, size);
-        editor_state.screen.buf_pos += size;
-    }
-}
 
 /*
  * Returns -1 when unable to open the file, -2 on write error, 0 on success
@@ -582,4 +427,153 @@ int flush_buffer_to_file(){
 
     fclose(fp);
     return 0;
+}
+
+
+/* Input */
+/*
+ * read_char is heavily motivated by this tutorial: https://viewsourcecode.org/snaptoken/kilo/03.rawInputAndOutput.html
+ * whose code comes from kilo: http://antirez.com/news/108
+ * */
+int read_char(){
+    char c;
+    ssize_t err;
+
+    while((err = read(STDIN_FILENO, &c, 1)) != 1) {
+        if (err == EAGAIN) {
+            panic("read_char: read() returned EAGAIN");
+        }
+    }
+
+    // Handle escape sequences
+    if (c == ESC){
+        char seq[3];
+
+        if (read(STDIN_FILENO, &seq[0], 1) != 1) return ESC;
+        if (read(STDIN_FILENO, &seq[1], 1) != 1) return ESC;
+
+        if (seq[0] == '[') {
+            if (seq[1] >= '0' && seq[1] <= '9') {
+                if (read(STDIN_FILENO, &seq[2], 1) != 1) return ESC;
+                if (seq[2] == '~') {
+                    switch (seq[2]) {
+                        case '1': return HOME_KEY;
+                        case '3': return DEL_KEY;
+                        case '4': return END_KEY;
+                        case '5': return PAGE_UP;
+                        case '6': return PAGE_DOWN;
+                        case '7': return HOME_KEY;
+                        case '8': return END_KEY;
+                    }
+                }
+            } else {
+                switch (seq[1]) {
+                    case 'A': return ARROW_UP;
+                    case 'B': return ARROW_DOWN;
+                    case 'C': return ARROW_RIGHT;
+                    case 'D': return ARROW_LEFT;
+                    case 'H': return HOME_KEY;
+                    case 'F': return END_KEY;
+                }
+            }
+        }
+        else if (seq[0] == 'O') {
+            switch (seq[1]){
+                case 'H': return HOME_KEY;
+                case 'F': return END_KEY;
+            }
+        }
+
+        return ESC;
+
+    } else {
+        return c;
+    }
+}
+
+
+void process_keypress(){
+
+    int c = read_char();
+    int err;
+
+    switch (c) {
+
+        case '\r':
+            TextBufferNewLine(editor_state.current_buffer);
+            break;
+
+        case ARROW_UP: up_arrow(); break;
+        case ARROW_DOWN: down_arrow(); break;
+        case ARROW_LEFT: left_arrow(); break;
+        case ARROW_RIGHT: right_arrow(); break;
+
+            // We wont use these keys for now
+        case PAGE_UP:
+        case PAGE_DOWN:
+        case HOME_KEY:
+        case END_KEY:
+        case DEL_KEY:
+            break;
+
+        case CTRL_KEY('l'):
+        case '\x1b':
+            break;
+
+            // Save buffer state to file
+        case CTRL_KEY('s'):
+            err = flush_buffer_to_file();
+            break;
+
+        case CTRL_KEY('q'):
+            cleanup();
+            exit(0);
+            break;
+
+            // Backspace
+        case BACKSPACE:
+        case CTRL_KEY('h'):
+            TextBufferBackspace(editor_state.current_buffer);
+    }
+}
+
+
+void up_arrow() {
+
+    int col = editor_state.current_buffer->cursorCol;
+    int row = editor_state.current_buffer->cursorRow;
+
+    if (row > 0){
+        row--;
+
+        TextBufferMoveCursor(editor_state.current_buffer, row, col);
+    }
+
+    // ding the terminal if you figure out how to
+}
+
+void down_arrow() {
+
+    int col = editor_state.current_buffer->cursorCol;
+    int row = editor_state.current_buffer->cursorRow;
+
+    if (row < editor_state.current_buffer->last_line_loc){
+        row++;
+
+        TextBufferMoveCursor(editor_state.current_buffer, row, col);
+    }
+
+    // ding terminal
+}
+
+void left_arrow() {
+    int row = editor_state.current_buffer->cursorRow;
+    int col = editor_state.current_buffer->cursorCol - 1;
+    TextBufferMoveCursor(editor_state.current_buffer, row, col);
+}
+
+void right_arrow() {
+    int row = editor_state.current_buffer->cursorRow;
+    int col = editor_state.current_buffer->cursorCol + 1;
+    TextBufferMoveCursor(editor_state.current_buffer, row, col);
 }
