@@ -13,6 +13,7 @@ An attempt to build a text editor from scratch in c.
 - [-] Save buffer to file
 - [-] Show/update changed status
 - [-] Inserts/editing
+  - [] Delete line on backspace (linked list of gapbufs might make this easier)
 - [-] Additional navigation 
 - [] Refactoring
 
