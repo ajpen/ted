@@ -523,6 +523,7 @@ void process_keypress(){
             // Save buffer state to file
         case CTRL_KEY('s'):
             err = flush_buffer_to_file();
+            editor_state.flushed = 1;
             break;
 
         case CTRL_KEY('q'):
@@ -534,9 +535,11 @@ void process_keypress(){
         case BACKSPACE:
         case CTRL_KEY('h'):
             TextBufferBackspace(editor_state.current_buffer);
+            editor_state.flushed = 0;
             break;
         default:
             TextBufferInsert(editor_state.current_buffer, c);
+            editor_state.flushed = 0;
             break;
     }
 }
