@@ -534,6 +534,10 @@ void process_keypress(){
         case BACKSPACE:
         case CTRL_KEY('h'):
             TextBufferBackspace(editor_state.current_buffer);
+            break;
+        default:
+            TextBufferInsert(editor_state.current_buffer, c);
+            break;
     }
 }
 
