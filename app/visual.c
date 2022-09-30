@@ -3,8 +3,6 @@
 //
 
 
-
-
 void screen_append(const char *str, int size);
 
 
