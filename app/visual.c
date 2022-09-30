@@ -3,8 +3,6 @@
 //
 
 
-void screen_append(const char *str, int size);
-
 
 typedef struct Cursor {
     int x;
@@ -21,6 +19,10 @@ struct VirtualScreen {
     int height;
     int render_start_line;
 };
+
+
+void screen_append(struct VirtualScreen *screen, const char *str, int size);
+
 
 /*
  * Returns the number of screen rows required to print a line of the given length.
@@ -100,7 +102,7 @@ void move_cursor_in_view(TextBuffer* buffer, struct VirtualScreen* screen){
     }
 }
 
-
+// TODO: Handle tabs
 void draw_editor_window(TextBuffer* buffer, struct VirtualScreen* screen){
     char* line = NULL;
     int cur_line = screen->render_start_line;
@@ -129,8 +131,9 @@ void draw_editor_window(TextBuffer* buffer, struct VirtualScreen* screen){
                 // if remaining line can fit in screen space, write the remaining line, else fill the remaining space
                 len_to_write = screen_cols < strlen(&line[i]) ? screen_cols : strlen(&line[i]);
 
-                screen_append(&line[i], len_to_write);
-                screen_append("\r\n", 2); screen_append("\x1b[K", 3);
+                screen_append(screen, &line[i], len_to_write);
+                screen_append(screen, "\r\n", 2);
+                screen_append(screen, "\x1b[K", 3);
                 i += len_to_write;
                 lines_written++;
 
@@ -142,8 +145,8 @@ void draw_editor_window(TextBuffer* buffer, struct VirtualScreen* screen){
             } while (i < strlen(line) - 1);
 
         } else {
-            screen_append(line, strlen(line));
-            screen_append("\r\n", 2);
+            screen_append(screen, line, strlen(line));
+            screen_append(screen, "\r\n", 2);
             lines_written++;
         }
 
@@ -153,7 +156,7 @@ void draw_editor_window(TextBuffer* buffer, struct VirtualScreen* screen){
 
     // If there's remaining space, fill with blanks
     for (; lines_written < screen->height-2; lines_written++){
-        screen_append("\r\n", 2);
+        screen_append(screen, "\r\n", 2);
     }
 }
 

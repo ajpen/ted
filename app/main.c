@@ -54,30 +54,30 @@ struct EditorState editor_state;
 
 /* System and Configuration */
 void initialize(int argc, char* argv[]);
-void cleanup();
-void set_window_size();
-void disableRawMode();
-void enableRawMode();
+void cleanup(struct EditorState *editor);
+void set_window_size(struct VirtualScreen *screen);
+void disableRawMode();  // TODO: This requires the editor state be global
+void enableRawMode(struct EditorState *editor);
 
 /* Screen Manipulation */
-void render_screen();
-void draw_screen();
-void draw_status_line(int line_size);
+void render_screen(struct VirtualScreen *screen);
+void draw_screen(struct EditorState *editor);
+void draw_status_line(struct EditorState *editor, int line_size);
 
 
 /* Cursor Movement */
-void up_arrow();
-void down_arrow();
-void right_arrow();
-void left_arrow();
+void up_arrow(struct EditorState *editor);
+void down_arrow(struct EditorState *editor);
+void right_arrow(struct EditorState *editor);
+void left_arrow(struct EditorState *editor);
 
 /* Input */
 int read_char();
-void process_keypress();
+void process_keypress(struct EditorState *editor);
 
 /* File Manipulation*/
-int flush_buffer_to_file();
-int load_file_and_initialize_buffer();
+int flush_buffer_to_file(struct EditorState *editor);
+int load_file_and_initialize_buffer(struct EditorState *editor);
 
 
 /* Main */
@@ -85,9 +85,9 @@ int main(int argc, char* argv[]) {
     initialize(argc, argv);
 
     while (1) {
-        draw_screen();
-        render_screen();
-        process_keypress();
+        draw_screen(&editor_state);
+        render_screen(&(editor_state.screen));
+        process_keypress(&editor_state);
     }
 }
 
@@ -107,11 +107,11 @@ void initialize(int argc, char* argv[]){
     editor_state.file_name = basename(editor_state.file_path);
 
     // Loads the file and initialize the textbuffer
-    load_file_and_initialize_buffer();
+    load_file_and_initialize_buffer(&editor_state);
 
     // initialize screen
-    enableRawMode();
-    set_window_size();
+    enableRawMode(&editor_state);
+    set_window_size(&editor_state.screen);
 
     // double the buffer for the screen to allow escape codes to be sent without overflowing
     editor_state.screen.len = editor_state.screen.height * editor_state.screen.width * sizeof(char) * 2;
@@ -129,16 +129,16 @@ void initialize(int argc, char* argv[]){
  * -1: If there was an issue with opening the file; the buffer is still initialized as a blank buffer
  * MEM_ERROR if it wasn't successfully loaded, or there was an issue resizing/manipulating/initializing the TextBuffer.
  * */
-int load_file_and_initialize_buffer() {
+int load_file_and_initialize_buffer(struct EditorState *editor) {
 
     // We'll open all files in read mode. If there's no file, we'll just have a blank buffer.
     // Only when writing to file, will we rewrite or create + write to the file.
-    FILE* fp = fopen(editor_state.file_path, "r");
+    FILE* fp = fopen(editor->file_path, "r");
 
-    // CreateTextBufferFromFile handles NULL values so we can just pass editor_state.fp and check the return
-    editor_state.current_buffer = CreateTextBufferFromFile(fp);
+    // CreateTextBufferFromFile handles NULL values so we can just pass editor->fp and check the return
+    editor->current_buffer = CreateTextBufferFromFile(fp);
 
-    if (editor_state.current_buffer == NULL){
+    if (editor->current_buffer == NULL){
         return MEM_ERROR;
     }
 
@@ -150,17 +150,17 @@ int load_file_and_initialize_buffer() {
     return 0;
 }
 
-void cleanup(){
+void cleanup(struct EditorState *editor) {
 
     // Clear screen
     write(STDOUT_FILENO, "\x1b[2J", 4);
     write(STDOUT_FILENO, "\x1b[H", 3);
 
     // free memory for screen
-    free(editor_state.screen.buffer);
+    free(editor->screen.buffer);
 
     // Free the text buffer
-    DestroyTextBuffer(editor_state.current_buffer);
+    DestroyTextBuffer(editor->current_buffer);
 }
 
 void panic(const char* message){
@@ -173,7 +173,7 @@ void panic(const char* message){
     exit(1);
 }
 
-void set_window_size() {
+void set_window_size(struct VirtualScreen *screen) {
     struct winsize ws;
 
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
@@ -198,7 +198,7 @@ void set_window_size() {
         }
 
         // parse the response and set the windows size
-        if (sscanf(buf, "%d;%d", &editor_state.screen.height, &editor_state.screen.width) != 2) {
+        if (sscanf(buf, "%d;%d", &(screen->height), &(screen->width)) != 2) {
             panic("Failed to get windows size");
         }
 
@@ -215,15 +215,15 @@ void disableRawMode() {
 }
 
 // Test raw mode
-void enableRawMode(){
+void enableRawMode(struct EditorState *editor) {
 
-    if(tcgetattr(STDIN_FILENO, &editor_state.orig_termios) == -1) {
+    if(tcgetattr(STDIN_FILENO, &editor->orig_termios) == -1) {
         panic("tcgetattr");
     }
 
     atexit(disableRawMode);
 
-    struct termios raw = editor_state.orig_termios;
+    struct termios raw = editor->orig_termios;
 
     /*
      * Local modes:
@@ -279,59 +279,59 @@ void enableRawMode(){
 }
 
 
-void screen_append(const char *str, int size) {
+void screen_append(struct VirtualScreen *screen, const char *str, int size) {
 
-    if (editor_state.screen.buffer != NULL && (editor_state.screen.len - editor_state.screen.buf_pos) > size) {
-        memcpy(editor_state.screen.buffer + editor_state.screen.buf_pos, str, size);
-        editor_state.screen.buf_pos += size;
+    if (screen->buffer != NULL && (screen->len - screen->buf_pos) > size) {
+        memcpy(screen->buffer + screen->buf_pos, str, size);
+        screen->buf_pos += size;
     }
 }
 
 
 /* Display */
-void render_screen() {
+void render_screen(struct VirtualScreen *screen) {
 
     // flush internal screen to display
-    write(STDOUT_FILENO, editor_state.screen.buffer, strlen(editor_state.screen.buffer));
+    write(STDOUT_FILENO, screen->buffer, strlen(screen->buffer));
 }
 
 
-void draw_screen(){
+void draw_screen(struct EditorState *editor) {
 
-    editor_state.screen.buf_pos = 0; // reset the screen
+    editor->screen.buf_pos = 0; // reset the screen
 
     // Disable cursor
-    screen_append("\x1b[?25l", 6);
+    screen_append(&(editor->screen), "\x1b[?25l", 6);
 
     // Clear screen
-    screen_append("\x1b[2J", 4);
+    screen_append(&(editor->screen), "\x1b[2J", 4);
 
     // Move cursor to the top
-    screen_append("\x1b[H", 3);
+    screen_append(&(editor->screen), "\x1b[H", 3);
 
-    move_cursor_in_view(editor_state.current_buffer, &editor_state.screen);
-    draw_editor_window(editor_state.current_buffer, &editor_state.screen);
-    draw_status_line(editor_state.screen.width);
+    move_cursor_in_view(editor->current_buffer, &(editor->screen));
+    draw_editor_window(editor->current_buffer, &(editor->screen));
+    draw_status_line(editor, editor->screen.width);
 
-    set_virtual_cursor_position(editor_state.current_buffer, &editor_state.screen);
+    set_virtual_cursor_position(editor->current_buffer, &(editor->screen));
 
-    int row = editor_state.screen.cursor.x;
-    int col = editor_state.screen.cursor.y;
+    int row = editor->screen.cursor.x;
+    int col = editor->screen.cursor.y;
 
     char buf[32];
     sprintf(buf, "\x1b[%d;%dH", row, col);
 
-    screen_append(buf, strlen(buf));
+    screen_append(&(editor->screen), buf, strlen(buf));
 
     // Enable cursor
-    screen_append("\x1b[?25h", 6);
+    screen_append(&(editor->screen), "\x1b[?25h", 6);
 
     // End the string (so we can get strlen)
-    screen_append("\0", 1);
+    screen_append(&(editor->screen), "\0", 1);
 }
 
 
-void draw_status_line(int line_size) {
+void draw_status_line(struct EditorState *editor, int line_size) {
 
     const char commands[] = "Ctrl+Q-quit Ctrl+S-Save";
     unsigned int commands_len = sizeof commands-1;
@@ -346,54 +346,54 @@ void draw_status_line(int line_size) {
 
     // Calculate space for each part of the status line
     int file_cursor_space = line_size - (commands_len + modified_len);
-    int cur_col_digits = snprintf(NULL, 0, "%d", editor_state.current_buffer->cursorCol);
-    int cur_row_digits = snprintf(NULL, 0, "%d", editor_state.current_buffer->cursorRow);
+    int cur_col_digits = snprintf(NULL, 0, "%d", editor->current_buffer->cursorCol);
+    int cur_row_digits = snprintf(NULL, 0, "%d", editor->current_buffer->cursorRow);
 
     int f_name_space = file_cursor_space - (cur_col_digits + cur_row_digits + 5);
-    int file_name_size = strlen(editor_state.file_name);
+    int file_name_size = strlen(editor->file_name);
 
     int cursor_info_buffer_size = file_cursor_space - f_name_space;
     char cursor_info_buffer[cursor_info_buffer_size];
 
 
     // invert the colours
-    screen_append(INVERT_COLOUR, INVERT_COLOUR_SIZE);
+    screen_append(&(editor->screen), INVERT_COLOUR, INVERT_COLOUR_SIZE);
 
     // Write file name. If its longer than available space, we'll cut it short with ellipsis
     if (file_name_size > f_name_space){
-        screen_append(editor_state.file_name, f_name_space - 4);
+        screen_append(&(editor->screen), editor->file_name, f_name_space - 4);
 
-        screen_append("... ", 4);
+        screen_append(&(editor->screen), "... ", 4);
 
     } else {
-        screen_append(editor_state.file_name, file_name_size);
+        screen_append(&(editor->screen), editor->file_name, file_name_size);
     }
 
     // Write col and row info
     sprintf(cursor_info_buffer,
             " | %d,%d ",
-            editor_state.current_buffer->cursorRow, editor_state.current_buffer->cursorCol);
+            editor->current_buffer->cursorRow, editor->current_buffer->cursorCol);
 
-    screen_append(cursor_info_buffer, strlen(cursor_info_buffer));
+    screen_append(&(editor->screen), cursor_info_buffer, strlen(cursor_info_buffer));
 
     // Indicate if buffer was modified since last write.
-    if (!editor_state.flushed) {
-        screen_append(modified, modified_len);
+    if (!editor->flushed) {
+        screen_append(&(editor->screen), modified, modified_len);
     }
     else {
-        memset(editor_state.screen.buffer + editor_state.screen.buf_pos, ' ', modified_len);
-        editor_state.screen.buf_pos += modified_len;
+        memset(editor->screen.buffer + editor->screen.buf_pos, ' ', modified_len);
+        editor->screen.buf_pos += modified_len;
     }
 
     // Fill with whitespace
-    memset(editor_state.screen.buffer + editor_state.screen.buf_pos, ' ', f_name_space - file_name_size);
-    editor_state.screen.buf_pos += f_name_space - file_name_size;
+    memset(editor->screen.buffer + editor->screen.buf_pos, ' ', f_name_space - file_name_size);
+    editor->screen.buf_pos += f_name_space - file_name_size;
 
     // print help
-    screen_append(commands, commands_len);
+    screen_append(&(editor->screen), commands, commands_len);
 
     // Finally reset the colour and style
-    screen_append(RESET_STYLE_COLOUR, INVERT_COLOUR_SIZE);
+    screen_append(&(editor->screen), RESET_STYLE_COLOUR, INVERT_COLOUR_SIZE);
 }
 
 
@@ -401,17 +401,17 @@ void draw_status_line(int line_size) {
 /*
  * Returns -1 when unable to open the file, -2 on write error, 0 on success
  * */
-int flush_buffer_to_file(){
+int flush_buffer_to_file(struct EditorState *editor) {
 
-    FILE* fp = fopen(editor_state.file_path, "w");
+    FILE* fp = fopen(editor->file_path, "w");
     char* line = NULL;
 
     if (fp == NULL){
         return -1;
     }
 
-    for (int i=0; i<=editor_state.current_buffer->last_line_loc; i++){
-        line = TextBufferGetLine(editor_state.current_buffer, i);
+    for (int i=0; i<=editor->current_buffer->last_line_loc; i++){
+        line = TextBufferGetLine(editor->current_buffer, i);
 
         if (line == NULL){
             fclose(fp);
@@ -492,7 +492,7 @@ int read_char(){
 }
 
 
-void process_keypress(){
+void process_keypress(struct EditorState *editor) {
 
     int c = read_char();
     int err;
@@ -500,13 +500,17 @@ void process_keypress(){
     switch (c) {
 
         case '\r':
-            TextBufferNewLine(editor_state.current_buffer);
+            TextBufferNewLine(editor->current_buffer);
             break;
 
-        case ARROW_UP: up_arrow(); break;
-        case ARROW_DOWN: down_arrow(); break;
-        case ARROW_LEFT: left_arrow(); break;
-        case ARROW_RIGHT: right_arrow(); break;
+        case ARROW_UP:
+            up_arrow(editor); break;
+        case ARROW_DOWN:
+            down_arrow(editor); break;
+        case ARROW_LEFT:
+            left_arrow(editor); break;
+        case ARROW_RIGHT:
+            right_arrow(editor); break;
 
             // We wont use these keys for now
         case PAGE_UP:
@@ -522,65 +526,65 @@ void process_keypress(){
 
             // Save buffer state to file
         case CTRL_KEY('s'):
-            err = flush_buffer_to_file();
-            editor_state.flushed = 1;
+            err = flush_buffer_to_file(editor);
+            editor->flushed = 1;
             break;
 
         case CTRL_KEY('q'):
-            cleanup();
+            cleanup(&editor_state);
             exit(0);
             break;
 
             // Backspace
         case BACKSPACE:
         case CTRL_KEY('h'):
-            TextBufferBackspace(editor_state.current_buffer);
-            editor_state.flushed = 0;
+            TextBufferBackspace(editor->current_buffer);
+            editor->flushed = 0;
             break;
         default:
-            TextBufferInsert(editor_state.current_buffer, c);
-            editor_state.flushed = 0;
+            TextBufferInsert(editor->current_buffer, c);
+            editor->flushed = 0;
             break;
     }
 }
 
 
-void up_arrow() {
+void up_arrow(struct EditorState *editor) {
 
-    int col = editor_state.current_buffer->cursorCol;
-    int row = editor_state.current_buffer->cursorRow;
+    int col = editor->current_buffer->cursorCol;
+    int row = editor->current_buffer->cursorRow;
 
     if (row > 0){
         row--;
 
-        TextBufferMoveCursor(editor_state.current_buffer, row, col);
+        TextBufferMoveCursor(editor->current_buffer, row, col);
     }
 
     // ding the terminal if you figure out how to
 }
 
-void down_arrow() {
+void down_arrow(struct EditorState *editor) {
 
-    int col = editor_state.current_buffer->cursorCol;
-    int row = editor_state.current_buffer->cursorRow;
+    int col = editor->current_buffer->cursorCol;
+    int row = editor->current_buffer->cursorRow;
 
-    if (row < editor_state.current_buffer->last_line_loc){
+    if (row < editor->current_buffer->last_line_loc){
         row++;
 
-        TextBufferMoveCursor(editor_state.current_buffer, row, col);
+        TextBufferMoveCursor(editor->current_buffer, row, col);
     }
 
     // ding terminal
 }
 
-void left_arrow() {
-    int row = editor_state.current_buffer->cursorRow;
-    int col = editor_state.current_buffer->cursorCol - 1;
-    TextBufferMoveCursor(editor_state.current_buffer, row, col);
+void left_arrow(struct EditorState *editor) {
+    int row = editor->current_buffer->cursorRow;
+    int col = editor->current_buffer->cursorCol - 1;
+    TextBufferMoveCursor(editor->current_buffer, row, col);
 }
 
-void right_arrow() {
-    int row = editor_state.current_buffer->cursorRow;
-    int col = editor_state.current_buffer->cursorCol + 1;
-    TextBufferMoveCursor(editor_state.current_buffer, row, col);
+void right_arrow(struct EditorState *editor) {
+    int row = editor->current_buffer->cursorRow;
+    int col = editor->current_buffer->cursorCol + 1;
+    TextBufferMoveCursor(editor->current_buffer, row, col);
 }
