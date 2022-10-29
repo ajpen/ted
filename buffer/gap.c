@@ -255,4 +255,22 @@ GapBuffer* CreateGapBufferFromString(char* str, int gap_len){
         return new_buffer;
     }
 }
+
 #pragma clang diagnostic pop
+
+
+char GapBufferCharAt(GapBuffer *instance, int i) {
+
+    if ( instance == NULL ||
+         instance->str_len == 0 ||
+         i < 0 || i >= instance->str_len){
+        return '\0';
+    }
+
+    if (i < instance->gap_loc){
+        return instance->buffer[i];
+    }
+    else {
+        return instance->buffer[i + instance->gap_len];
+    }
+}

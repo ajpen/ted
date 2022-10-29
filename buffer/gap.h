@@ -9,7 +9,7 @@
 #ifndef TED_GAP_H
 #define TED_GAP_H
 
-#define MEM_ERROR -128
+#define MEM_ERROR 128
 
 /*
  * Gap Buffer Data structure
@@ -53,7 +53,7 @@ GapBuffer* CreateGapBuffer(int capacity);
  * Passing a NULL pointer does nothing.
  * buffer: pointer to an allocated gapbuffer.
  * */
-void DestroyGapBuffer(GapBuffer * instance);
+void DestroyGapBuffer(GapBuffer* instance);
 
 
 /*
@@ -83,13 +83,13 @@ char* GapBufferGetString(GapBuffer* instance);
 
 
 /*
- * Splits the buffer at the cursor location, returning a new buffer of the same capcacity as the original
+ * Splits the buffer at the cursor location, returning a new buffer of the same capacity as the original
  * with the second half of the string. The original buffer will contain the first half of the string,
  * with the gap extending to fill the capacity.
  *
  * return a pointer to the new buffer, or NULL on failure.
  * */
-GapBuffer* GapBufferSplit(GapBuffer *instance);
+GapBuffer* GapBufferSplit(GapBuffer* instance);
 
 
 /*
@@ -100,5 +100,15 @@ GapBuffer* GapBufferSplit(GapBuffer *instance);
  * returns an initialized GapBuffer* or NULL on error
  * */
 GapBuffer* CreateGapBufferFromString(char* str, int gap_len);
+
+
+/*
+ * Given an index i, return the character at the location i.
+ * The gap is ignored; acts similar to string index.
+ * domain for i = [0, strlen-1]
+ * returns null byte if the instance is invalid, the string is empty, or i is out of domain
+ * */
+char GapBufferCharAt(GapBuffer* instance, int i);
+
 
 #endif //TED_GAP_H
