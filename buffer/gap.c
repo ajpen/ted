@@ -2,8 +2,7 @@
 // Created by Anfernee Jervis on 6/29/22.
 //
 
-#include <stdlib.h>
-#include <string.h>
+
 
 #include "gap.h"
 
@@ -75,8 +74,9 @@ GapBuffer* CreateGapBuffer(int capacity){
 }
 
 
-void DestroyGapBuffer(GapBuffer * instance){
+void DestroyGapBuffer(GapBuffer* instance){
     free(instance->buffer);
+    free(instance->rendered);
     free(instance);
 }
 

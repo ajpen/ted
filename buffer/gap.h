@@ -9,6 +9,8 @@
 #ifndef TED_GAP_H
 #define TED_GAP_H
 
+#include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 
 #define MEM_ERROR 128
