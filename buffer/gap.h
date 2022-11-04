@@ -9,14 +9,14 @@
 #ifndef TED_GAP_H
 #define TED_GAP_H
 
+#include <stdbool.h>
+
 #define MEM_ERROR 128
 
 /*
  * Gap Buffer Data structure
  * A buffer that uses a "gap" within a string to allow addition of new characters to it.
  * The length of the buffer is the length of the gap + the length of the string
- *
- * Gap Buffer implements the buffer interface defined in base.h
  *
  * Implementation:
  * - The string is seen as a separate object starting from buffer[0] and extending str_len characters.
@@ -26,6 +26,7 @@
  *      - 0 to gap_loc-1 is the string up to the gap
  *      - (gap_loc+gap_len) is the index right after the gap
  *      - (gap_loc+gap_len) + (str_len-gap_loc-1) is the last index of the string.
+ * -
  * */
 
 typedef struct GapBuffer {
@@ -33,6 +34,11 @@ typedef struct GapBuffer {
     int str_len;    // Length of the string
     int gap_len;    // Length of the gap
     int gap_loc;    // Gap location as an offset from the start of the buffer
+
+    // This section is for rendering
+    char* rendered;  // rendered version of the string
+    int rendered_len;
+    bool modified;   // false if there were no changes since last render, else true
 } GapBuffer;
 
 
@@ -109,6 +115,7 @@ GapBuffer* CreateGapBufferFromString(char* str, int gap_len);
  * returns null byte if the instance is invalid, the string is empty, or i is out of domain
  * */
 char GapBufferCharAt(GapBuffer* instance, int i);
+
 
 
 #endif //TED_GAP_H
