@@ -6,11 +6,11 @@
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/errno.h>
+#include <stdbool.h>
 #include "../buffer/buffer.h"
 #include "defs.h"
 
 #include "visual.c"
-
 
 /* Constants */
 enum specialKeys {
@@ -37,7 +37,7 @@ struct EditorState {
     // File states
     char* file_name;
     char* file_path;         // path to file.
-    int flushed;             // was the most recent changes flushed to disk
+    bool flushed;             // was the most recent changes flushed to disk
 
     // buffer states
     TextBuffer* current_buffer;
@@ -121,7 +121,7 @@ void initialize(int argc, char* argv[]){
     // the line the screen starts printing from
     editor_state.screen.render_start_line = 0;
 
-    editor_state.flushed = 1;
+    editor_state.flushed = true;
 }
 
 /*
@@ -523,7 +523,7 @@ void process_keypress(){
             // Save buffer state to file
         case CTRL_KEY('s'):
             err = flush_buffer_to_file();
-            editor_state.flushed = 1;
+            editor_state.flushed = true;
             break;
 
         case CTRL_KEY('q'):
@@ -535,11 +535,11 @@ void process_keypress(){
         case BACKSPACE:
         case CTRL_KEY('h'):
             TextBufferBackspace(editor_state.current_buffer);
-            editor_state.flushed = 0;
+            editor_state.flushed = false;
             break;
         default:
             TextBufferInsert(editor_state.current_buffer, c);
-            editor_state.flushed = 0;
+            editor_state.flushed = false;
             break;
     }
 }
