@@ -69,6 +69,7 @@ GapBuffer* CreateGapBuffer(int capacity){
     gap_buffer->gap_loc = 0;
     gap_buffer->gap_len = capacity;
     gap_buffer->str_len = 0;
+    gap_buffer->rendered = NULL;
 
     return gap_buffer;
 }
@@ -97,6 +98,7 @@ int GapBufferInsertChar(GapBuffer* instance, char ch){
     instance->str_len++;
     instance->gap_loc++;
     instance->gap_len--;
+    instance->modified = true;
 
     return 0;
 }
@@ -108,6 +110,7 @@ void GapBufferBackSpace(GapBuffer* instance){
         instance->gap_loc--;
         instance->gap_len++;
         instance->str_len--;
+        instance->modified = true;
     }
 }
 
@@ -214,11 +217,13 @@ GapBuffer* GapBufferSplit(GapBuffer *instance) {
     new_gap_buffer->str_len = second_half_of_str_len;
     new_gap_buffer->gap_loc = 0;
     new_gap_buffer->gap_len = capacity - second_half_of_str_len;
+    new_gap_buffer->modified = true;
 
 
     // set str_len, gap_len of the old GapBuffer
     instance->str_len = instance->gap_loc;
     instance->gap_len = capacity - instance->str_len;
+    instance->modified = true;
 
     return new_gap_buffer;
 

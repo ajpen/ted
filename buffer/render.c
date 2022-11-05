@@ -8,6 +8,11 @@
 #include "render.h"
 
 int RenderGapBuffer(GapBuffer* buffer, RenderConfig* config) {
+
+    if (!buffer->modified){
+        return 0;
+    }
+
     if (buffer->rendered == NULL){
         buffer->rendered = malloc(sizeof(char) * buffer->str_len * 2);
 
@@ -43,6 +48,12 @@ int RenderGapBuffer(GapBuffer* buffer, RenderConfig* config) {
         }
     }
 
+    // Terminate string if there's unused space
+    if (pos < buffer->rendered_len){
+        buffer->rendered[pos] = '\0';
+    }
+
+    buffer->modified = false;
     return 0;
 }
 
