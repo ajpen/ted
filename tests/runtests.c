@@ -8,6 +8,7 @@
 #include <string.h>
 #include "../buffer/gap.h"
 #include "../buffer/buffer.h"
+#include "../buffer/render.h"
 
 
 // Test Suites
@@ -70,6 +71,9 @@ void TestGapBuffer(){
     const char sample11[] = "cccaaax";
     const char sample12[] ="ybbbaaaaaaaaaaaaaaaaaddd";
     const char sample13[] ="ybbbaaaaaaaaaaaaaaaaadddp";
+    const char render1[] = "asdf\t1234";
+    const char render2[] = "asdf    1234";
+
 
 
     printf("Test 1, empty string\n");
@@ -199,6 +203,23 @@ void TestGapBuffer(){
 
     string_holder = GapBufferGetString(buffer);
     string_comp_assert(string_holder, sample1);
+
+
+    printf("Test 8 Render\n");
+    RenderConfig renderConfig = {
+        .tabsize =  4
+    };
+
+    GapBuffer* buffer4 = CreateGapBufferFromString((char *) render1, 10);
+    assert(buffer4 != NULL);
+
+    err = RenderGapBuffer(buffer4, renderConfig);
+
+    assert(err == 0);
+
+    assert(strcmp(buffer4->rendered, render2) == 0);
+
+
 
 
     printf("Cleanup...\n");

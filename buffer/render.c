@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include "render.h"
 
-int RenderGapBuffer(GapBuffer* buffer, RenderConfig* config) {
+int RenderGapBuffer(GapBuffer* buffer, RenderConfig config) {
 
     if (!buffer->modified){
         return 0;
@@ -38,8 +38,8 @@ int RenderGapBuffer(GapBuffer* buffer, RenderConfig* config) {
         }
 
         if (GapBufferCharAt(buffer, i) == '\t'){
-            sprintf(&(buffer->rendered[pos]), "%*s", config->tabsize, "");
-            pos += config->tabsize;
+            sprintf(&(buffer->rendered[pos]), "%*s", config.tabsize, "");
+            pos += config.tabsize;
         }
 
         else {

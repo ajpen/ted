@@ -235,14 +235,15 @@ GapBuffer* GapBufferSplit(GapBuffer *instance) {
 #pragma ide diagnostic ignored "DanglingPointer" // Ignore because CreateGapBuffer never returns a deallocated pointer.
 GapBuffer* CreateGapBufferFromString(char* str, int gap_len){
 
-    int s_len = strlen(str);
-    int capacity = s_len + gap_len;
+    int s_len;
     GapBuffer* new_buffer;
+    int capacity;
 
-    if (str == NULL || s_len == 0){
+    if (str == NULL || (s_len = strlen(str)) == 0){
         return CreateGapBuffer(gap_len);
 
     } else {
+        capacity = s_len + gap_len;
         new_buffer = CreateGapBuffer(capacity);
 
         if (new_buffer == NULL){
@@ -256,6 +257,8 @@ GapBuffer* CreateGapBufferFromString(char* str, int gap_len){
         new_buffer->str_len = s_len;
         new_buffer->gap_loc = s_len;
         new_buffer->gap_len = gap_len;
+        new_buffer->modified = true;
+
 
         return new_buffer;
     }

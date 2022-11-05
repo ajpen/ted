@@ -21,6 +21,6 @@ typedef struct RenderConfig {
  * If rendered is not null, it reuses the buffer, extending it when necessary.
  * What happens during render is determined by the RenderConfig passed
  * */
-int RenderGapBuffer(GapBuffer* buffer, RenderConfig* config);
+int RenderGapBuffer(GapBuffer* buffer, RenderConfig config);
 
 #endif //TED_RENDER_H
