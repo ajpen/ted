@@ -25,8 +25,7 @@ typedef enum WinRenderState {
     Rendered = 0,
     PartialRender,
     CascadingRender,
-    FullRender,
-    CompleteRender
+    FullRender
 } WinRenderState;
 
 
@@ -50,7 +49,7 @@ typedef enum WinRenderState {
 typedef struct Window {
     TextBuffer* source_buffer;
     WinRenderState render_state;
-    RenderConfig render_settings;
+    RenderConfig* render_settings;
     char* status_line;
     int start_line;
     int end_line;
@@ -60,6 +59,13 @@ typedef struct Window {
     int cursor_y;
 } Window;
 
+
+/*
+ * Creates a new window with view set to the start of the text
+ * buffer and the cursor location at 1, 1
+ * Returns NULL if there's an issue
+ * */
+Window* CreateWindow(TextBuffer* source, RenderConfig* renderConf, int rows, int cols);
 
 
 /*
