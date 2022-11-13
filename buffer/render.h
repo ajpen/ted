@@ -17,6 +17,7 @@ typedef struct RenderConfig {
 
 
 /*
+ * TODO: Can make this a function that calls other functions that render different parts (syntax highlight, tabs, etc)
  * Renders the string in a gap buffer, populating the rendered field
  * If rendered is not null, it reuses the buffer, extending it when necessary.
  * What happens during render is determined by the RenderConfig passed

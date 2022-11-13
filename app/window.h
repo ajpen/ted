@@ -8,10 +8,6 @@
 #include "../buffer/buffer.h"
 #include "../buffer/render.h"
 
-typedef struct FlushableBuffer{
-    char* buffer;
-    int len;
-} FlushableBuffer;
 
 /*
  * Window Render states for the render function
@@ -78,18 +74,25 @@ int WindowRenderTextBuffer(Window* window);
 
 
 /*
- * Returns a flushable buffer containing the entire window rendered and ready to
- * flush to the screen.
+ * Renders window to screen
  *
- * Returns NULL on error.
+ * Returns 0 on success
  * */
-FlushableBuffer* WindowRenderWindow(Window* window);
+int WindowFlushToScreen(Window* window);
 
 
 /*
- * Moves the cursor in view. Allows the option of making the cursor centered in the window, rather
- * than at the top/bottom (useful when search is done)
+ * Moves the cursor in view.
  * */
-int WindowMoveCursorInView(Window* window, bool center_cursor);
+int WindowMoveCursorInView(Window* window);
 
+
+/*
+ * Resets the window and cursor position. Moves view to the top of text buffer and cursor to 1,1
+ * Returns 0 on success
+ * */
+void WindowReset(Window* window);
+
+
+// TODO: Can probably do partial update by updating the lines, and refreshing the screen immediately. this assumes theres no issues with the cursor location.
 #endif //TED_WINDOW_H
