@@ -85,9 +85,9 @@ int GapBufferMoveGap(GapBuffer* instance, int location);
 
 
 /*
- * GetString returns a pointer to an allocated copy of the current string in the gapbuffer.
+ * GetString returns a pointer to an allocated copy of the rendered buffer in the gapbuffer.
  * */
-char* GapBufferGetString(GapBuffer* instance);
+char* GapBufferGetRenderedString(GapBuffer* instance);
 
 
 /*

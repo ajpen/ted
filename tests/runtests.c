@@ -77,14 +77,14 @@ void TestGapBuffer(){
 
 
     printf("Test 1, empty string\n");
-    string_holder = GapBufferGetString(buffer);
+    string_holder = GapBufferGetRenderedString(buffer);
     string_comp_assert(string_holder, sample1);
 
 
     printf("Test 2 insert char\n");
     err = GapBufferInsertChar(buffer, 'a');
     assert(err == 0);
-    string_holder = GapBufferGetString(buffer);
+    string_holder = GapBufferGetRenderedString(buffer);
     string_comp_assert(string_holder, sample2);
 
 
@@ -93,7 +93,7 @@ void TestGapBuffer(){
         err = GapBufferInsertChar(buffer, 'a');
         assert(err == 0);
     }
-    string_holder = GapBufferGetString(buffer);
+    string_holder = GapBufferGetRenderedString(buffer);
     string_comp_assert(string_holder, sample3);
 
 
@@ -102,13 +102,13 @@ void TestGapBuffer(){
         err = GapBufferInsertChar(buffer, 'a');
         assert(err == 0);
     }
-    string_holder = GapBufferGetString(buffer);
+    string_holder = GapBufferGetRenderedString(buffer);
     string_comp_assert(string_holder, sample4);
 
 
     printf("Test 3 Backspace \n");
     GapBufferBackSpace(buffer);
-    string_holder = GapBufferGetString(buffer);
+    string_holder = GapBufferGetRenderedString(buffer);
     string_comp_assert(string_holder, sample5);
 
 
@@ -121,7 +121,7 @@ void TestGapBuffer(){
         err = GapBufferInsertChar(buffer, 'b');
         assert(err == 0);
     }
-    string_holder = GapBufferGetString(buffer);
+    string_holder = GapBufferGetRenderedString(buffer);
     string_comp_assert(string_holder, sample6);
 
 
@@ -134,7 +134,7 @@ void TestGapBuffer(){
         err = GapBufferInsertChar(buffer, 'c');
         assert(err == 0);
     }
-    string_holder = GapBufferGetString(buffer);
+    string_holder = GapBufferGetRenderedString(buffer);
     string_comp_assert(string_holder, sample7);
 
 
@@ -147,7 +147,7 @@ void TestGapBuffer(){
         err = GapBufferInsertChar(buffer, 'd');
         assert(err == 0);
     }
-    string_holder = GapBufferGetString(buffer);
+    string_holder = GapBufferGetRenderedString(buffer);
     string_comp_assert(string_holder, sample8);
 
 
@@ -158,8 +158,8 @@ void TestGapBuffer(){
     GapBuffer* buffer2 = GapBufferSplit(buffer);
     assert(buffer2 != NULL);
 
-    string_holder = GapBufferGetString(buffer);
-    string_holder2 = GapBufferGetString(buffer2);
+    string_holder = GapBufferGetRenderedString(buffer);
+    string_holder2 = GapBufferGetRenderedString(buffer2);
 
     string_comp_assert(string_holder, sample9);
     string_comp_assert(string_holder2, sample10);
@@ -168,7 +168,7 @@ void TestGapBuffer(){
     err = GapBufferInsertChar(buffer, 'x');
     assert(err == 0);
 
-    string_holder = GapBufferGetString(buffer);
+    string_holder = GapBufferGetRenderedString(buffer);
     string_comp_assert(string_holder, sample11);
 
     printf("Test 5.2 Split\n");
@@ -176,7 +176,7 @@ void TestGapBuffer(){
     err = GapBufferInsertChar(buffer2, 'y');
     assert(err == 0);
 
-    string_holder = GapBufferGetString(buffer2);
+    string_holder = GapBufferGetRenderedString(buffer2);
     string_comp_assert(string_holder, sample12);
 
 
@@ -185,7 +185,7 @@ void TestGapBuffer(){
     GapBuffer* buffer3 = CreateGapBufferFromString((char *)sample12, 10);
     assert(buffer != NULL);
 
-    string_holder = GapBufferGetString(buffer3);
+    string_holder = GapBufferGetRenderedString(buffer3);
     string_comp_assert(string_holder, sample12);
 
     printf("Test 6.1 Create From string\n");
@@ -193,7 +193,7 @@ void TestGapBuffer(){
     err = GapBufferInsertChar(buffer3, 'p');
     assert(err == 0);
 
-    string_holder = GapBufferGetString(buffer3);
+    string_holder = GapBufferGetRenderedString(buffer3);
     string_comp_assert(string_holder, sample13);
 
     printf("Test 7 Backspace\n");
@@ -201,7 +201,7 @@ void TestGapBuffer(){
         GapBufferBackSpace(buffer);
     }
 
-    string_holder = GapBufferGetString(buffer);
+    string_holder = GapBufferGetRenderedString(buffer);
     string_comp_assert(string_holder, sample1);
 
 

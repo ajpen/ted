@@ -2,6 +2,7 @@
 // Created by Anfernee Jervis on 8/27/22.
 //
 
+#include "render.h"
 
 void screen_append(const char *str, int size);
 
@@ -106,12 +107,23 @@ void draw_editor_window(TextBuffer* buffer, struct VirtualScreen* screen){
     int cur_line = screen->render_start_line;
     int lines_written = 0;
     int screen_cols;
+    int err;
+
+    RenderConfig settings;
+    settings.tabsize = 4;
 
     while (cur_line <= buffer->last_line_loc && lines_written < screen->height - 1){
 
         screen_cols = screen->width;
 
         // Let's draw cur_line using as many screen rows as needed.
+
+        err = RenderGapBuffer(buffer->lines[cur_line], settings);
+        if (err != 0){
+            panic("Failed to render gapbuf");
+        }
+
+
         line = TextBufferGetLine(buffer, cur_line);
 
         if (line == NULL){

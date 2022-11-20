@@ -169,22 +169,16 @@ int GapBufferMoveGap(GapBuffer* instance, int location){
     return 0;
 }
 
-char* GapBufferGetString(GapBuffer* instance){
-    char* buffer = malloc(1 + (sizeof(char) * instance->str_len));
+char* GapBufferGetRenderedString(GapBuffer* instance){
+    char* buffer = malloc(1 + (sizeof(char) * instance->rendered_len));
 
     if (buffer == NULL){
         return NULL;
     }
 
-    // Copy before gap
-    memcpy(buffer, instance->buffer, instance->gap_loc);
+    memcpy(buffer, instance->rendered, instance->rendered_len);
 
-    // Copy after gap
-    memcpy(buffer + instance->gap_loc,
-           instance->buffer + instance->gap_loc + instance->gap_len,
-           instance->str_len - instance->gap_loc);
-
-    buffer[instance->str_len] = '\0';
+    buffer[instance->rendered_len] = '\0';
 
     return buffer;
 }

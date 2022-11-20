@@ -205,7 +205,7 @@ char *TextBufferGetLine(TextBuffer *instance, int row) {
         return NULL;
     }
 
-    return GapBufferGetString(instance->lines[row]);
+    return GapBufferGetRenderedString(instance->lines[row]);
 }
 
 TextBuffer* CreateTextBufferFromFile(FILE* fp){
